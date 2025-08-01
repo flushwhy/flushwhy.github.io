@@ -5,7 +5,7 @@ date = "2025-08-01T09:12:43-04:00"
 #
 # description is optional
 #
-# description = "As a solo dev, I struggled with game design and code architecture for my first Android game, BlockRush. Learn how I moved from a single-file prototype to a clean, maintainable manager-based system and my biggest lessons learned."
+description = "As a solo dev, I struggled with game design and code architecture for my first Android game, BlockRush. Learn how I moved from a single-file prototype to a clean, maintainable manager-based system and my biggest lessons learned."
 
 tags = []
 +++
