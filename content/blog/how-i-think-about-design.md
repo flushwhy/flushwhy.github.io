@@ -7,7 +7,7 @@ date = "2025-08-01T09:12:43-04:00"
 #
 description = "As a solo dev, I struggled with game design and code architecture for my first Android game, BlockRush. Learn how I moved from a single-file prototype to a clean, maintainable manager-based system and my biggest lessons learned."
 
-tags = []
+tags = ["devblog", "Design", "Android"]
 +++
 
 Whether it's a game, an API, or a website, I always find myself wrestling with the same question: What's the best way to break down a prototype into a clean, maintainable structure of classes and files? Even after years of doing this, I still question the 'how' and 'if' of it all. This constant struggle became incredibly real during my most recent project: an Android game I built on Unity.
@@ -24,9 +24,9 @@ Believe it or not, I built the first playable version of **BlockRush** in about 
 
 If you're on the fence about building an app or game for Google or iOS, I promise you, just do it. It's a nightmare to understand all the systems, what you need to pass review, and what can be worked on later, but it is so worth it. The first time is the hardest; the next time, it will be easier and faster.
 
-The backend of that first release was a complete mess. I built the systems out twice and reverted back because I didn't like how I had done it. I would get Ads working, and GPGS (Google Play Games Services) would break. Then I would fix GPGS, and Ads would break. It was a constant cycle of chaos. This is when I started thinking deeply about how I wanted to build my managers and what should be shared state versus local state. I'll go into what that means to me later on. 
+The backend of that first release was a complete mess. I built the systems out twice and reverted back because I didn't like how I had done it. I would get Ads working, and GPGS (Google Play Games Services) would break. Then I would fix GPGS, and Ads would break. It was a constant cycle of chaos. This is when I started thinking deeply about how I wanted to build my managers and what should be shared state versus local state. I'll go into what that means to me later on.
 
-## Rework And Stuff. 
+## Rework And Stuff.
 
 I spent a lot of time thinking about game state, ad state, UI state, and all the other states. My goal was to manage each one in a single, dedicated location, ideally within its own file. This led to a huge rework for version 0.11, where I moved everything into dedicated manager files. The only things shared between managers were simple booleans and values, with functions acting as the primary drivers of logic.
 
