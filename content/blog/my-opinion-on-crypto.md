@@ -1,6 +1,6 @@
 +++
 title = "My Opinion on Crypto"
-date = "2025-10-29T17:50:39-04:00"
+date = "2025-10-29T04:50:39-04:00"
 
 #
 # description is optional
