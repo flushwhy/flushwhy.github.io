@@ -20,21 +20,21 @@ There is no starter language, only languages that hide complexity. For example, 
 
 Some languages that follow this:
 
-Lua
+- Lua
 
-Python
+- Python
 
-JavaScript/TypeScript
+- JavaScript/TypeScript
 
-C# (Kinda, it is OOP but easier than Java)
+- C# (Kinda, it is OOP but easier than Java)
 
-Kotlin (The way you add packages/libraries isn't noob friendly)
+- Kotlin (The way you add packages/libraries isn't noob friendly)
 
 Some niche languages that are kinda like that:
 
-Crystal (It's like Python, but compiled)
+- Crystal (It's like Python, but compiled)
 
-Odin
+- Odin
 
 I am sure I forgot someone's language, and will be hearing about it somewhere online.
 
