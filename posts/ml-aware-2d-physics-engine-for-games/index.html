@@ -6,8 +6,10 @@
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
+<meta name="dcterms.date" content="2026-06-25">
+<meta name="description" content="A little blog about ML-Aware 2D physics Enignes for Games, and how I think I am going to get that in realtime.">
 
-<title>Flushwhy. – flushwhy</title>
+<title>ML-Aware 2D Physics Engine for Games – flushwhy</title>
 <style>
 /* Default styles provided by pandoc.
 ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
@@ -26,26 +28,24 @@ ul.task-list li input[type="checkbox"] {
 </style>
 
 
-<script src="site_libs/quarto-nav/quarto-nav.js"></script>
-<script src="site_libs/quarto-nav/headroom.min.js"></script>
-<script src="site_libs/clipboard/clipboard.min.js"></script>
-<script src="site_libs/quarto-search/autocomplete.umd.js"></script>
-<script src="site_libs/quarto-search/fuse.min.js"></script>
-<script src="site_libs/quarto-search/quarto-search.js"></script>
-<meta name="quarto:offset" content="./">
-<link href="./favicon.ico" rel="icon">
-<script src="site_libs/quarto-listing/list.min.js"></script>
-<script src="site_libs/quarto-listing/quarto-listing.js"></script>
-<script src="site_libs/quarto-html/quarto.js" type="module"></script>
-<script src="site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
-<script src="site_libs/quarto-html/popper.min.js"></script>
-<script src="site_libs/quarto-html/tippy.umd.min.js"></script>
-<script src="site_libs/quarto-html/anchor.min.js"></script>
-<link href="site_libs/quarto-html/tippy.css" rel="stylesheet">
-<link href="site_libs/quarto-html/quarto-syntax-highlighting-cafa03d72540f85b13f0c1c3e91893c0.css" rel="stylesheet" id="quarto-text-highlighting-styles">
-<script src="site_libs/bootstrap/bootstrap.min.js"></script>
-<link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="site_libs/bootstrap/bootstrap-80d48eb5dce026c8a49b727bd55a5b19.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<script src="../../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="../../site_libs/quarto-nav/headroom.min.js"></script>
+<script src="../../site_libs/clipboard/clipboard.min.js"></script>
+<script src="../../site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="../../site_libs/quarto-search/fuse.min.js"></script>
+<script src="../../site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="../../">
+<link href="../../favicon.ico" rel="icon">
+<script src="../../site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="../../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="../../site_libs/quarto-html/popper.min.js"></script>
+<script src="../../site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="../../site_libs/quarto-html/anchor.min.js"></script>
+<link href="../../site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="../../site_libs/quarto-html/quarto-syntax-highlighting-cafa03d72540f85b13f0c1c3e91893c0.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="../../site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="../../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="../../site_libs/bootstrap/bootstrap-80d48eb5dce026c8a49b727bd55a5b19.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -73,65 +73,7 @@ ul.task-list li input[type="checkbox"] {
     "search-label": "Search"
   }
 }</script>
-<script>
 
-  window.document.addEventListener("DOMContentLoaded", function (_event) {
-    const listingTargetEl = window.document.querySelector('#listing-recent-posts .list');
-    if (!listingTargetEl) {
-      // No listing discovered, do not attach.
-      return; 
-    }
-
-    const options = {
-      valueNames: ['listing-date','listing-title','listing-description','listing-categories','listing-reading-time',{ data: ['index'] },{ data: ['categories'] },{ data: ['listing-date-sort'] },{ data: ['listing-file-modified-sort'] }],
-      
-      searchColumns: ["listing-date","listing-title","listing-author","listing-image","listing-description"],
-    };
-
-    window['quarto-listings'] = window['quarto-listings'] || {};
-    window['quarto-listings']['listing-recent-posts'] = new List('listing-recent-posts', options);
-
-    if (window['quarto-listing-loaded']) {
-      window['quarto-listing-loaded']();
-    }
-  });
-
-  window.addEventListener('hashchange',() => {
-    if (window['quarto-listing-loaded']) {
-      window['quarto-listing-loaded']();
-    }
-  })
-  </script>
-
-  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
-  <script defer="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
-
-<script type="text/javascript">
-const typesetMath = (el) => {
-  if (window.MathJax) {
-    // MathJax Typeset
-    window.MathJax.typeset([el]);
-  } else if (window.katex) {
-    // KaTeX Render
-    var mathElements = el.getElementsByClassName("math");
-    var macros = [];
-    for (var i = 0; i < mathElements.length; i++) {
-      var texText = mathElements[i].firstChild;
-      if (mathElements[i].tagName == "SPAN" && texText && texText.data) {
-        window.katex.render(texText.data, mathElements[i], {
-          displayMode: mathElements[i].classList.contains('display'),
-          throwOnError: false,
-          macros: macros,
-          fleqn: false
-        });
-      }
-    }
-  }
-}
-window.Quarto = {
-  typesetMath
-};
-</script>
 
 </head>
 
@@ -142,7 +84,7 @@ window.Quarto = {
     <nav class="navbar navbar-expand-lg " data-bs-theme="dark">
       <div class="navbar-container container-fluid">
       <div class="navbar-brand-container mx-auto">
-    <a class="navbar-brand" href="./index.html">
+    <a class="navbar-brand" href="../../index.html">
     <span class="navbar-title">flushwhy</span>
     </a>
   </div>
@@ -153,11 +95,11 @@ window.Quarto = {
           <div class="collapse navbar-collapse" id="navbarCollapse">
             <ul class="navbar-nav navbar-nav-scroll me-auto">
   <li class="nav-item">
-    <a class="nav-link active" href="./index.html" aria-current="page"> 
+    <a class="nav-link" href="../../index.html"> 
 <span class="menu-text">home</span></a>
   </li>  
   <li class="nav-item">
-    <a class="nav-link" href="./posts.html"> 
+    <a class="nav-link" href="../../posts.html"> 
 <span class="menu-text">writing</span></a>
   </li>  
   <li class="nav-item">
@@ -176,7 +118,7 @@ window.Quarto = {
 <span class="menu-text"></span></a>
   </li>  
   <li class="nav-item compact">
-    <a class="nav-link" href="./index.xml"> <i class="bi bi-rss" role="img" aria-label="RSS">
+    <a class="nav-link" href="../../index.xml"> <i class="bi bi-rss" role="img" aria-label="RSS">
 </i> 
 <span class="menu-text"></span></a>
   </li>  
@@ -188,24 +130,42 @@ window.Quarto = {
     </nav>
 </header>
 <!-- content -->
-<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-full page-navbar">
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
 <!-- sidebar -->
 <!-- margin-sidebar -->
-    
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar zindex-bottom">
+        
+    </div>
 <!-- main -->
-<main class="content column-page" id="quarto-document-content">
+<main class="content" id="quarto-document-content">
 
 <header id="title-block-header" class="quarto-title-block default">
 <div class="quarto-title">
-<h1 class="title">Flushwhy<span class="dot">.</span></h1>
-<p class="subtitle lead"><em>writing about code, games, and whatever else — no filter</em></p>
+<h1 class="title">ML-Aware 2D Physics Engine for Games</h1>
+  <div class="quarto-categories">
+    <div class="quarto-category">opinion</div>
+    <div class="quarto-category">game-dev</div>
+    <div class="quarto-category">physics</div>
+    <div class="quarto-category">ml</div>
+  </div>
+  </div>
+
+<div>
+  <div class="description">
+    A little blog about ML-Aware 2D physics Enignes for Games, and how I think I am going to get that in realtime.
+  </div>
 </div>
 
 
-
-<div class="quarto-title-meta column-page">
+<div class="quarto-title-meta">
 
     
+    <div>
+    <div class="quarto-title-meta-heading">Published</div>
+    <div class="quarto-title-meta-contents">
+      <p class="date">June 25, 2026</p>
+    </div>
+  </div>
   
     
   </div>
@@ -215,145 +175,8 @@ window.Quarto = {
 </header>
 
 
-<div class="fw-hero">
-<p>Systems engineer by trade. I write here about things I’m building, learning, breaking, and occasionally having opinions about. Longer, more formal lab work lives at <a href="https://flushwhy.github.io/labs">→ labs</a>.</p>
-</div>
-<section id="recent-writing" class="level2">
-<h2 class="anchored" data-anchor-id="recent-writing">recent writing</h2>
-<div id="listing-recent-posts" class="quarto-listing quarto-listing-container-default">
-<div class="list quarto-listing-default">
-<div class="quarto-post image-right" data-index="0" data-categories="ZGV2bG9nJTJDbWwlMkNnYW1lZGV2" data-listing-date-sort="1782360000000" data-listing-file-modified-sort="1782425727130" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="10" data-listing-word-count-sort="1998">
-<div class="body">
-<h3 class="no-anchor listing-title">
-<a href="./posts/2d-ml-aware-engine-for-games/index.html" class="no-external">ML-Physics: Teaching a Neural Net to Fake Physics</a>
-</h3>
-<div class="listing-categories">
-
-<div class="listing-category" onclick="window.quartoListingCategory('ZGV2bG9n'); return false;">devlog</div>
-
-<div class="listing-category" onclick="window.quartoListingCategory('bWw='); return false;">ml</div>
-
-<div class="listing-category" onclick="window.quartoListingCategory('Z2FtZWRldg=='); return false;">gamedev</div>
-
-</div>
-<div class="delink listing-description"><a href="./posts/2d-ml-aware-engine-for-games/index.html" class="no-external">
-<p>Building a 2D physics engine that uses classical solvers to train a neural net to replace itself.</p>
-</a></div>
-</div>
-<div class="metadata">
-<a href="./posts/2d-ml-aware-engine-for-games/index.html" class="no-external">
-<div class="listing-date">
-Jun 25, 2026
-</div>
-<div class="listing-reading-time">10 min</div>
-</a>
-</div>
-</div>
-<div class="quarto-post image-right" data-index="1" data-categories="b3Bpbmlvbg==" data-listing-date-sort="1781668800000" data-listing-file-modified-sort="1782416400366" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="4" data-listing-word-count-sort="734">
-<div class="body">
-<h3 class="no-anchor listing-title">
-<a href="./posts/why-reading-is-important/index.html" class="no-external">Why Reading Is Important</a>
-</h3>
-<div class="listing-categories">
-
-<div class="listing-category" onclick="window.quartoListingCategory('b3Bpbmlvbg=='); return false;">opinion</div>
-
-</div>
-<div class="delink listing-description"><a href="./posts/why-reading-is-important/index.html" class="no-external">
-<p>How I went from hating reading to it being one of the most useful things I do, and what that has to do with how I think about learning and teaching.</p>
-</a></div>
-</div>
-<div class="metadata">
-<a href="./posts/why-reading-is-important/index.html" class="no-external">
-<div class="listing-date">
-Jun 17, 2026
-</div>
-<div class="listing-reading-time">4 min</div>
-</a>
-</div>
-</div>
-<div class="quarto-post image-right" data-index="2" data-categories="ZGVzaWduJTJDb3BpbmlvbiUyQ3Byb2dyYW1taW5n" data-listing-date-sort="1775880000000" data-listing-file-modified-sort="1782416400362" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="5" data-listing-word-count-sort="910">
-<div class="body">
-<h3 class="no-anchor listing-title">
-<a href="./posts/how-to-think-about-memory/index.html" class="no-external">How to Think About Memory</a>
-</h3>
-<div class="listing-categories">
-
-<div class="listing-category" onclick="window.quartoListingCategory('ZGVzaWdu'); return false;">design</div>
-
-<div class="listing-category" onclick="window.quartoListingCategory('b3Bpbmlvbg=='); return false;">opinion</div>
-
-<div class="listing-category" onclick="window.quartoListingCategory('cHJvZ3JhbW1pbmc='); return false;">programming</div>
-
-</div>
-<div class="delink listing-description"><a href="./posts/how-to-think-about-memory/index.html" class="no-external">
-<p>Memory is the most critical component of a computer. So why is it so often an afterthought? A guide to writing memory-efficient code in C, C++, and Odin.</p>
-</a></div>
-</div>
-<div class="metadata">
-<a href="./posts/how-to-think-about-memory/index.html" class="no-external">
-<div class="listing-date">
-Apr 11, 2026
-</div>
-<div class="listing-reading-time">5 min</div>
-</a>
-</div>
-</div>
-<div class="quarto-post image-right" data-index="3" data-categories="b3Bpbmlvbg==" data-listing-date-sort="1770008400000" data-listing-file-modified-sort="1782416400358" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="7" data-listing-word-count-sort="1281">
-<div class="body">
-<h3 class="no-anchor listing-title">
-<a href="./posts/a-look-at-sovereign-network/index.html" class="no-external">A Look at Sovereign Network</a>
-</h3>
-<div class="listing-categories">
-
-<div class="listing-category" onclick="window.quartoListingCategory('b3Bpbmlvbg=='); return false;">opinion</div>
-
-</div>
-<div class="delink listing-description"><a href="./posts/a-look-at-sovereign-network/index.html" class="no-external">
-<p>Sovereign Network — freedom or fraud?</p>
-</a></div>
-</div>
-<div class="metadata">
-<a href="./posts/a-look-at-sovereign-network/index.html" class="no-external">
-<div class="listing-date">
-Feb 2, 2026
-</div>
-<div class="listing-reading-time">7 min</div>
-</a>
-</div>
-</div>
-<div class="quarto-post image-right" data-index="4" data-categories="ZGV2YmxvZyUyQ29waW5pb24=" data-listing-date-sort="1768453200000" data-listing-file-modified-sort="1782416400360" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="4" data-listing-word-count-sort="682">
-<div class="body">
-<h3 class="no-anchor listing-title">
-<a href="./posts/actual-use-for-blockchains/index.html" class="no-external">Actual Use for Blockchains</a>
-</h3>
-<div class="listing-categories">
-
-<div class="listing-category" onclick="window.quartoListingCategory('ZGV2YmxvZw=='); return false;">devblog</div>
-
-<div class="listing-category" onclick="window.quartoListingCategory('b3Bpbmlvbg=='); return false;">opinion</div>
-
-</div>
-<div class="delink listing-description"><a href="./posts/actual-use-for-blockchains/index.html" class="no-external">
-<p>Since my post about crypto, I’ve been thinking about how to apply blockchain tech to a post-web3-clarity world.</p>
-</a></div>
-</div>
-<div class="metadata">
-<a href="./posts/actual-use-for-blockchains/index.html" class="no-external">
-<div class="listing-date">
-Jan 15, 2026
-</div>
-<div class="listing-reading-time">4 min</div>
-</a>
-</div>
-</div>
-</div>
-<div class="listing-no-matching d-none">No matching items</div>
-</div>
 
 
-
-</section>
 
 </main> <!-- /main -->
 <script id="quarto-html-after-body" type="application/javascript">
@@ -429,7 +252,7 @@ Jan 15, 2026
     }
       var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
       var mailtoRegex = new RegExp(/^mailto:/);
-        var filterRegex = new RegExp("https:\/\/flushwhy\.github\.io\/");
+        var filterRegex = new RegExp('/' + window.location.host + '/');
       var isInternal = (href) => {
           return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
       }

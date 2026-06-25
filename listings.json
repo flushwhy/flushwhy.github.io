@@ -2,6 +2,7 @@
   {
     "listing": "/posts.html",
     "items": [
+      "/posts/2d-ml-aware-engine-for-games/index.html",
       "/posts/why-reading-is-important/index.html",
       "/posts/how-to-think-about-memory/index.html",
       "/posts/a-look-at-sovereign-network/index.html",
@@ -16,6 +17,7 @@
   {
     "listing": "/index.html",
     "items": [
+      "/posts/2d-ml-aware-engine-for-games/index.html",
       "/posts/why-reading-is-important/index.html",
       "/posts/how-to-think-about-memory/index.html",
       "/posts/a-look-at-sovereign-network/index.html",
