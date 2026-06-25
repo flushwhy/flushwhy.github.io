@@ -1,0 +1,23 @@
+---
+title: "Flushwhy[.]{.dot}"
+subtitle: "*writing about code, games, and whatever else — no filter*"
+page-layout: full
+toc: false
+listing:
+  id: recent-posts
+  contents: posts
+  sort: "date desc"
+  type: default
+  max-items: 5
+  fields: [date, title, description, categories, reading-time]
+---
+
+::: {.fw-hero}
+
+Systems engineer by trade. I write here about things I'm building, learning, breaking, and occasionally having opinions about. Longer, more formal lab work lives at [→ labs](https://flushwhy.github.io/labs).
+:::
+
+## recent writing
+
+::: {#recent-posts}
+:::

@@ -1,0 +1,301 @@
+/*-- scss:defaults --*/
+
+// Warm earthy palette
+$cream:       #F5F0E8;
+$parchment:   #EDE6D6;
+$bark:        #6B4F3A;
+$soil:        #3D2B1F;
+$moss:        #5C6B4A;
+$rust:        #A0522D;
+$sand:        #C4A882;
+$fog:         #9E9488;
+$warm-white:  #FAF7F2;
+
+// Quarto theme variables
+$body-bg:             $cream;
+$body-color:          $soil;
+$link-color:          $bark;
+$link-hover-color:    $rust;
+
+$font-family-sans-serif: 'Atkinson Hyperlegible', Georgia, serif;
+$font-family-monospace:  'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+
+$font-size-root:  17px;
+$line-height-base: 1.75;
+
+$headings-font-family: 'Playfair Display', Georgia, 'Times New Roman', serif;
+$headings-color:       $soil;
+$headings-font-weight: 700;
+
+$navbar-bg:            $parchment;
+$navbar-fg:            $soil;
+$navbar-hl:            $rust;
+
+$footer-bg:            $parchment;
+$footer-fg:            $fog;
+
+$code-bg:              #EDE6D3;
+$code-color:           $bark;
+
+$border-color:         $sand;
+$border-radius:        4px;
+
+/*-- scss:rules --*/
+
+// Import cozy fonts
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,800;1,700&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap');
+
+// Body & base
+body {
+  background-color: $cream;
+  color: $soil;
+  letter-spacing: 0.01em;
+}
+
+// Subtle page texture via gradient
+.page-layout-article .quarto-title-block,
+.quarto-listing {
+  position: relative;
+}
+
+// Navbar refinements
+.navbar {
+  border-bottom: 2px solid $sand;
+  padding: 1rem 0;
+
+  .navbar-brand {
+    font-family: $headings-font-family;
+    font-size: 1.4rem;
+    font-weight: 800;
+    color: $soil !important;
+    letter-spacing: -0.02em;
+
+    &::after {
+      content: '.';
+      color: $rust;
+    }
+  }
+
+  .nav-link {
+    color: $soil !important;
+    font-size: 0.92rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    padding: 0.25rem 0.75rem !important;
+    border-radius: 3px;
+    transition: background 0.15s ease, color 0.15s ease;
+
+    &:hover {
+      background: rgba($sand, 0.3);
+      color: $rust !important;
+    }
+  }
+}
+
+// Hero / title block
+#quarto-content .quarto-title-block {
+  background: $parchment;
+  border-left: 4px solid $rust;
+  border-radius: 0 6px 6px 0;
+  padding: 2rem 2.5rem;
+  margin-bottom: 2rem;
+
+  .title {
+    font-size: 2.8rem;
+    line-height: 1.15;
+    color: $soil;
+  }
+
+  .quarto-title-meta {
+    font-size: 0.85rem;
+    color: $fog;
+    margin-top: 0.75rem;
+  }
+
+  .quarto-categories .quarto-category {
+    background: rgba($rust, 0.12);
+    border: 1px solid rgba($rust, 0.3);
+    color: $bark;
+    font-size: 0.78rem;
+    border-radius: 20px;
+    padding: 0.2rem 0.7rem;
+  }
+}
+
+// Article prose
+.quarto-post, article {
+  max-width: 720px;
+
+  p { margin-bottom: 1.25rem; }
+
+  h1, h2, h3 {
+    margin-top: 2.5rem;
+    margin-bottom: 0.75rem;
+  }
+
+  h2 {
+    font-size: 1.6rem;
+    border-bottom: 1px solid $sand;
+    padding-bottom: 0.4rem;
+  }
+
+  h3 {
+    font-size: 1.25rem;
+    color: $bark;
+  }
+
+  blockquote {
+    border-left: 3px solid $rust;
+    background: $parchment;
+    padding: 1rem 1.5rem;
+    border-radius: 0 4px 4px 0;
+    color: $bark;
+    font-style: italic;
+    margin: 1.5rem 0;
+  }
+
+  a {
+    text-decoration-thickness: 1px;
+    text-underline-offset: 3px;
+  }
+}
+
+// Code blocks — warm not cold
+pre.sourceCode {
+  background: #432f20 !important;
+  border: 1px solid rgba($sand, 0.3);
+  border-radius: 6px;
+  padding: 1.25rem 1.5rem;
+
+  code {
+    font-family: $font-family-monospace;
+    font-size: 0.88rem;
+    line-height: 1.6;
+    color: #E8D5B7;
+  }
+}
+
+// Inline code
+code:not(pre code) {
+  background: rgba($sand, 0.3);
+  color: $bark;
+  font-size: 0.87em;
+  padding: 0.15em 0.4em;
+  border-radius: 3px;
+  font-family: $font-family-monospace;
+}
+
+// Listing / post cards
+.quarto-listing {
+  .quarto-post {
+    background: $warm-white;
+    border: 1px solid $sand;
+    border-radius: 8px;
+    padding: 1.5rem 1.75rem;
+    margin-bottom: 1.25rem;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+
+    &:hover {
+      border-color: $bark;
+      box-shadow: 0 2px 12px rgba($soil, 0.08);
+    }
+
+    .listing-title a {
+      font-family: $headings-font-family;
+      font-size: 1.35rem;
+      color: $soil;
+      text-decoration: none;
+
+      &:hover { color: $rust; }
+    }
+
+    .listing-description {
+      color: $fog;
+      font-size: 0.93rem;
+      margin-top: 0.4rem;
+      line-height: 1.6;
+    }
+
+    .listing-date, .listing-reading-time {
+      font-size: 0.8rem;
+      color: $fog;
+    }
+
+    .listing-category {
+      background: rgba($rust, 0.1);
+      color: $bark;
+      border-radius: 20px;
+      padding: 0.15rem 0.6rem;
+      font-size: 0.76rem;
+    }
+  }
+}
+
+// TOC
+#TOC {
+  border-left: 2px solid $sand;
+  padding-left: 1rem;
+
+  .toc-title {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: $fog;
+    font-weight: 700;
+  }
+
+  a {
+    color: $fog;
+    font-size: 0.87rem;
+    text-decoration: none;
+    line-height: 1.8;
+
+    &:hover, &.active { color: $rust; }
+  }
+}
+
+// Footer
+footer {
+  border-top: 1px solid $sand;
+  background: $parchment;
+  color: $fog;
+  font-size: 0.85rem;
+  padding: 1.5rem 0;
+}
+
+// Homepage hero section
+.hero-section {
+  padding: 3.5rem 0 2.5rem;
+  border-bottom: 1px solid $sand;
+  margin-bottom: 2.5rem;
+
+  h1 {
+    font-size: 3.5rem;
+    line-height: 1.1;
+    color: $soil;
+    font-weight: 800;
+    margin-bottom: 0.75rem;
+
+    span.accent { color: $rust; }
+  }
+
+  p.tagline {
+    font-size: 1.15rem;
+    color: $fog;
+    max-width: 520px;
+    line-height: 1.7;
+  }
+}
+
+// Callout boxes — warm palette
+.callout {
+  border-left-color: $rust;
+  background: $parchment;
+  border-radius: 0 6px 6px 0;
+}
+
+// Smooth selection
+::selection {
+  background: rgba($rust, 0.2);
+  color: $soil;
+}
