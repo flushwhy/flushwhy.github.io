@@ -27,7 +27,7 @@ website:
 
   page-footer:
     left: "flushwhy · [labs ↗](https://flushwhy.github.io/labs)"
-    right: "built with [quarto](https://quarto.org)"
+    right: "built with [quarto](https://quarto.org) and love"
     center: "© 2026 flushwhy"
 
 execute:
