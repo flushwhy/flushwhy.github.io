@@ -1,0 +1,397 @@
+---
+title: "ML-Physics: Teaching a Neural Net to Fake Physics"
+date: "2026-06-25"
+description: "Building a 2D physics engine that uses classical solvers to train a neural net to replace itself."
+categories: [devlog, ml, gamedev]
+format:
+  html:
+    code-fold: true
+---
+
+So I don't talk about this much on here, but I have been quietly building 
+something I think is actually kind of cool — a 2D physics engine where the 
+classical solver trains a neural net to eventually replace the expensive parts 
+of itself. The long-term goal is to get something that can run KSP or Space 
+Engine scale simulations on mid-range hardware. That's the dream anyway.
+
+Let me explain what I mean, because I feel like this gets misunderstood fast.
+
+## What Even Is a Constraint Solver?
+
+A classical rigid body physics engine works by defining constraints — rules 
+that the simulation has to satisfy every frame. Things like "these two boxes 
+cannot overlap" or "this joint has to stay connected." Every frame, the solver 
+looks at all the violations and applies corrective impulses to the bodies to 
+fix them. The specific method I am using is called a sequential impulse solver, 
+which is what Box2D uses and what Erin Catto has been writing about for years 
+in his GDC papers.[^1]
+
+The cool thing about this approach is it is deterministic. Same inputs, same 
+outputs, every time. That matters a lot for what comes next.
+
+```{ojs}
+//| echo: false
+//| fig-cap: "Every frame, in order, no exceptions."
+
+{
+  const w = 640, h = 320;
+  const svg = d3.create("svg")
+    .attr("viewBox", `0 0 ${w} ${h}`)
+    .attr("width", "100%")
+    .style("font-family", "system-ui, sans-serif");
+
+  const defs = svg.append("defs");
+  defs.append("marker")
+    .attr("id", "arr")
+    .attr("viewBox", "0 0 10 10")
+    .attr("refX", 8).attr("refY", 5)
+    .attr("markerWidth", 6).attr("markerHeight", 6)
+    .attr("orient", "auto-start-reverse")
+    .append("path")
+    .attr("d", "M2 1L8 5L2 9")
+    .attr("fill", "none")
+    .attr("stroke", "#999")
+    .attr("stroke-width", 1.5)
+    .attr("stroke-linecap", "round");
+
+  const teal  = { fill: "#e1f5ee", stroke: "#0f6e56", text: "#085041" };
+  const gray  = { fill: "#f1efe8", stroke: "#888780", text: "#444441" };
+
+  function box(g, x, y, bw, bh, color, title, sub) {
+    g.append("rect")
+      .attr("x", x).attr("y", y).attr("width", bw).attr("height", bh)
+      .attr("rx", 8).attr("fill", color.fill)
+      .attr("stroke", color.stroke).attr("stroke-width", 0.5);
+    if (sub) {
+      g.append("text").attr("x", x+bw/2).attr("y", y+bh/2-9)
+        .attr("text-anchor","middle").attr("dominant-baseline","central")
+        .attr("fill", color.text).attr("font-size", 13).attr("font-weight", 500)
+        .text(title);
+      g.append("text").attr("x", x+bw/2).attr("y", y+bh/2+10)
+        .attr("text-anchor","middle").attr("dominant-baseline","central")
+        .attr("fill", color.stroke).attr("font-size", 11).text(sub);
+    } else {
+      g.append("text").attr("x", x+bw/2).attr("y", y+bh/2)
+        .attr("text-anchor","middle").attr("dominant-baseline","central")
+        .attr("fill", color.text).attr("font-size", 13).attr("font-weight", 500)
+        .text(title);
+    }
+  }
+
+  function arrow(g, x1, y1, x2, y2) {
+    g.append("line")
+      .attr("x1",x1).attr("y1",y1).attr("x2",x2).attr("y2",y2)
+      .attr("stroke","#bbb").attr("stroke-width",1.2)
+      .attr("marker-end","url(#arr)");
+  }
+
+  const root = svg.append("g");
+
+  box(root, 240, 20, 160, 44, gray, "Game loop", null);
+  arrow(root, 320, 64, 320, 94);
+  root.append("text").attr("x",335).attr("y",83)
+    .attr("font-size",11).attr("fill","#bbb").text("dt = 1/60s");
+
+  const steps = [
+    { y:94,  title:"Integrate forces",      sub:"Semi-implicit Euler, gravity",    ms:"~0.2ms" },
+    { y:178, title:"Broadphase",            sub:"AABB overlap, O(n²) for now",     ms:"~0.5ms" },
+    { y:262, title:"Narrowphase + resolve", sub:"SAT, sequential impulse solver",  ms:"~2-8ms" },
+  ];
+
+  steps.forEach((s, i) => {
+    box(root, 200, s.y, 240, 54, teal, s.title, s.sub);
+    if (i < steps.length - 1) arrow(root, 320, s.y+54, 320, s.y+84);
+    root.append("text").attr("x",60).attr("y",s.y+27)
+      .attr("text-anchor","middle").attr("font-size",11).attr("fill","#bbb").text(s.ms);
+  });
+
+  root.append("text").attr("x",60).attr("y",42)
+    .attr("text-anchor","middle").attr("font-size",11).attr("fill","#bbb")
+    .text("budget: 16.6ms");
+
+  root.append("path")
+    .attr("d","M440 289 L540 289 L540 42 L400 42")
+    .attr("fill","none").attr("stroke","#ccc")
+    .attr("stroke-width",1).attr("stroke-dasharray","5 4")
+    .attr("marker-end","url(#arr)");
+
+  root.append("text").attr("x",554).attr("y",170)
+    .attr("text-anchor","middle").attr("font-size",11).attr("fill","#bbb")
+    .attr("transform","rotate(-90 554 170)").text("next frame");
+
+  return svg.node();
+}
+```
+
+## So Where Does the ML Come In?
+
+Here is the thing — constraint solvers scale badly. The more bodies you have, 
+the more constraints you have, the more work the solver has to do every frame. 
+KSP2 is a great example of this going wrong. Every part of every vessel is 
+running through a full constraint solve every frame, and the game runs like 
+garbage on anything but high end hardware.
+
+The idea I am working with is: similar physical configurations tend to produce 
+similar outcomes. A stack of boxes falling looks basically the same whether it's 
+these three boxes or those three boxes. A neural net can learn to recognize 
+those patterns and predict what the solver would have done — without actually 
+running the solver.
+
+So the pipeline is basically:
+
+1. Run the classical solver on a bunch of random scenarios
+2. Record every `(state before step, state after step)` pair
+3. Train a small neural net to learn that mapping
+4. At runtime, route "boring" or "familiar" physics through the net, 
+   and fall back to the real solver for anything complex or novel
+
+The thing that makes this actually viable is that **the solver generates its 
+own training data**. I don't need a dataset. I just need to run the engine.[^2]
+
+Drag the slider. Find where your game breaks.
+
+```{ojs}
+//| echo: false
+viewof bodyCount = Inputs.range([10, 250], {
+  value: 80, step: 1, label: "Bodies in scene"
+})
+```
+
+```{ojs}
+//| echo: false
+{
+  const n = bodyCount;
+  const frames = Array.from({length:25}, (_,i) => (i+1)*10);
+  const solverMs = frames.map(b => +(b*b*0.002 + b*0.02).toFixed(1));
+  const overBudget = (+(n*n*0.002 + n*0.02).toFixed(1)) > 16.6;
+  const solverAtN = +(n*n*0.002 + n*0.02).toFixed(1);
+
+  const w=640, h=280, mL=55, mR=20, mT=24, mB=40;
+  const iW=w-mL-mR, iH=h-mT-mB;
+  const xS = d3.scaleLinear([10,250],[0,iW]);
+  const yS = d3.scaleLinear([0,130],[iH,0]);
+
+  const svg = d3.create("svg").attr("viewBox",`0 0 ${w} ${h}`)
+    .attr("width","100%").style("font-family","system-ui, sans-serif");
+  const g = svg.append("g").attr("transform",`translate(${mL},${mT})`);
+
+  yS.ticks(5).forEach(t => {
+    g.append("line").attr("x1",0).attr("x2",iW)
+      .attr("y1",yS(t)).attr("y2",yS(t))
+      .attr("stroke","#e5e5e3").attr("stroke-width",1);
+  });
+
+  g.append("line").attr("x1",0).attr("x2",iW)
+    .attr("y1",yS(16.6)).attr("y2",yS(16.6))
+    .attr("stroke","#e24b4a").attr("stroke-width",1.5)
+    .attr("stroke-dasharray","6 4");
+  g.append("text").attr("x",iW-4).attr("y",yS(16.6)-5)
+    .attr("text-anchor","end").attr("font-size",10).attr("fill","#e24b4a")
+    .text("16.6ms budget");
+
+  g.append("path")
+    .datum(frames.map((f,i)=>[f,0.8]))
+    .attr("fill","rgba(27,175,122,0.08)")
+    .attr("d", d3.area().x(d=>xS(d[0])).y0(iH).y1(d=>yS(d[1])));
+  g.append("path")
+    .datum(frames.map((f,i)=>[f,0.8]))
+    .attr("fill","none").attr("stroke","#1baf7a").attr("stroke-width",2)
+    .attr("d", d3.line().x(d=>xS(d[0])).y(d=>yS(d[1])));
+
+  g.append("path")
+    .datum(frames.map((f,i)=>[f,solverMs[i]]))
+    .attr("fill","rgba(42,120,214,0.08)")
+    .attr("d", d3.area().x(d=>xS(d[0])).y0(iH).y1(d=>yS(Math.min(d[1],130))));
+  g.append("path")
+    .datum(frames.map((f,i)=>[f,solverMs[i]]))
+    .attr("fill","none").attr("stroke","#2a78d6").attr("stroke-width",2)
+    .attr("d", d3.line().x(d=>xS(d[0])).y(d=>yS(Math.min(d[1],130))));
+
+  g.append("line")
+    .attr("x1",xS(n)).attr("x2",xS(n)).attr("y1",0).attr("y2",iH)
+    .attr("stroke", overBudget ? "#e24b4a" : "#999")
+    .attr("stroke-width",1).attr("stroke-dasharray","4 3");
+  g.append("circle")
+    .attr("cx",xS(n)).attr("cy",yS(Math.min(solverAtN,128)))
+    .attr("r",5).attr("fill", overBudget ? "#e24b4a" : "#2a78d6");
+  g.append("text")
+    .attr("x",xS(n)+6).attr("y",yS(Math.min(solverAtN,125))-6)
+    .attr("font-size",10).attr("fill", overBudget ? "#e24b4a" : "#2a78d6")
+    .text(`${n} bodies → ${solverAtN}ms${overBudget ? " ⚠ over budget" : ""}`);
+
+  g.append("g").attr("transform",`translate(0,${iH})`)
+    .call(d3.axisBottom(xS).ticks(8))
+    .selectAll("text").attr("fill","#898781").attr("font-size",10);
+  g.append("g")
+    .call(d3.axisLeft(yS).ticks(5).tickFormat(d=>d+"ms"))
+    .selectAll("text").attr("fill","#898781").attr("font-size",10);
+
+  g.append("text").attr("x",iW/2).attr("y",iH+34)
+    .attr("text-anchor","middle").attr("font-size",11).attr("fill","#898781")
+    .text("Bodies in scene");
+  g.append("text").attr("transform","rotate(-90)")
+    .attr("x",-iH/2).attr("y",-42)
+    .attr("text-anchor","middle").attr("font-size",11).attr("fill","#898781")
+    .text("Frame time (ms)");
+
+  const leg = svg.append("g").attr("transform",`translate(${mL},8)`);
+  [["#2a78d6","Classical solver O(n²)"],["#1baf7a","Neural approximator"],["#e24b4a","Frame budget"]].forEach(([c,l],i)=>{
+    leg.append("rect").attr("x",i*180).attr("y",0).attr("width",10).attr("height",10).attr("rx",2).attr("fill",c);
+    leg.append("text").attr("x",i*180+14).attr("y",9).attr("font-size",10).attr("fill","#666").text(l);
+  });
+
+  return svg.node();
+}
+```
+
+## Where It's At Right Now
+
+The 2D engine is built in C++ using xmake — broadphase collision detection, 
+SAT narrowphase for circles and boxes, sequential impulse resolution, the whole 
+thing. It runs a multithreaded data generator that spins up one physics world 
+per CPU thread, runs random scenarios, and writes binary files that Python can 
+read for training.
+
+The neural net itself is a small residual MLP — predicts the *change* in state 
+rather than the absolute state, which keeps the outputs small and makes training 
+way more stable. About 531k parameters, which is nothing. Runs in under a 
+millisecond on any modern GPU.
+
+I am still in early days — first real training run hasn't finished yet — but 
+the pipeline is working end to end. TensorBoard is logging everything including 
+side-by-side videos of what the solver does vs what the net predicts, so I can 
+actually see where it diverges.[^3]
+
+## Why 2D First?
+
+Honestly, 2D is just a proving ground. The goal is 3D, targeting RTX 30x0 as 
+the minimum. But 3D introduces a bunch of problems that 2D doesn't have — 
+rotation alone gets way more complicated (quaternions are annoying for neural 
+nets, there's actually a whole paper on this[^4]), and contact geometry becomes 
+dramatically harder.
+
+The 2D engine gives me a working data pipeline I can trust, training 
+infrastructure I know works, and something to write about while the harder 
+stuff is being figured out. Also it's just easier to debug when you can see 
+everything in a flat 2D view.
+
+## What's Next
+
+Getting the first training run done and looking at rollout stability — that's 
+the real metric that matters. A 1% position error per frame sounds small until 
+you realize it compounds into garbage after about two seconds of simulation. The 
+question is how many frames the net can run unassisted before it needs a 
+correction from the real solver.
+
+Drag the slider. See how fast it falls apart.
+
+```{ojs}
+//| echo: false
+viewof errorPct = Inputs.range([0.2, 3.0], {
+  value: 1.0, step: 0.1, label: "Per-frame error rate (%)"
+})
+```
+
+```{ojs}
+//| echo: false
+{
+  const FRAMES=300, THRESH=0.5;
+  const rate = errorPct/100;
+  const fl = Array.from({length:FRAMES},(_,i)=>i);
+  const rollout = fl.map(i => Math.min(Math.pow(1+rate,i)-1, 8));
+  const divF = rollout.findIndex(v=>v>=THRESH);
+
+  const w=640,h=260,mL=55,mR=20,mT=24,mB=40;
+  const iW=w-mL-mR, iH=h-mT-mB;
+  const xS=d3.scaleLinear([0,FRAMES],[0,iW]);
+  const yS=d3.scaleLinear([0,4],[iH,0]);
+
+  const svg=d3.create("svg").attr("viewBox",`0 0 ${w} ${h}`)
+    .attr("width","100%").style("font-family","system-ui, sans-serif");
+  const g=svg.append("g").attr("transform",`translate(${mL},${mT})`);
+
+  yS.ticks(4).forEach(t=>{
+    g.append("line").attr("x1",0).attr("x2",iW)
+      .attr("y1",yS(t)).attr("y2",yS(t))
+      .attr("stroke","#e5e5e3").attr("stroke-width",1);
+  });
+
+  [60,120,180,240,300].forEach(f=>{
+    g.append("text").attr("x",xS(f)).attr("y",iH+28)
+      .attr("text-anchor","middle").attr("font-size",9).attr("fill","#bbb")
+      .text(`${f/60}s`);
+  });
+
+  g.append("line").attr("x1",0).attr("x2",iW)
+    .attr("y1",yS(THRESH)).attr("y2",yS(THRESH))
+    .attr("stroke","#e24b4a").attr("stroke-width",1.5)
+    .attr("stroke-dasharray","6 4");
+  g.append("text").attr("x",iW-4).attr("y",yS(THRESH)-5)
+    .attr("text-anchor","end").attr("font-size",10).attr("fill","#e24b4a")
+    .text("visible divergence");
+
+  g.append("line").attr("x1",0).attr("x2",iW)
+    .attr("y1",yS(0)).attr("y2",yS(0))
+    .attr("stroke","#2a78d6").attr("stroke-width",2);
+
+  g.append("path")
+    .datum(fl.map((f,i)=>[f,rollout[i]]))
+    .attr("fill","rgba(237,161,0,0.1)")
+    .attr("d",d3.area().x(d=>xS(d[0])).y0(iH).y1(d=>yS(Math.min(d[1],4))));
+  g.append("path")
+    .datum(fl.map((f,i)=>[f,rollout[i]]))
+    .attr("fill","none").attr("stroke","#eda100").attr("stroke-width",2)
+    .attr("d",d3.line().x(d=>xS(d[0])).y(d=>yS(Math.min(d[1],4))).curve(d3.curveBasis));
+
+  if (divF>=0 && divF<FRAMES) {
+    g.append("line")
+      .attr("x1",xS(divF)).attr("x2",xS(divF)).attr("y1",0).attr("y2",iH)
+      .attr("stroke","#e24b4a").attr("stroke-width",1).attr("stroke-dasharray","4 3");
+    g.append("text").attr("x",xS(divF)+4).attr("y",14)
+      .attr("font-size",10).attr("fill","#e24b4a")
+      .text(`diverges at frame ${divF} (${(divF/60).toFixed(1)}s)`);
+  }
+
+  g.append("g").attr("transform",`translate(0,${iH})`)
+    .call(d3.axisBottom(xS).ticks(6).tickFormat(d=>`f${d}`))
+    .selectAll("text").attr("fill","#898781").attr("font-size",10);
+  g.append("g")
+    .call(d3.axisLeft(yS).ticks(4).tickFormat(d=>d.toFixed(1)+"m"))
+    .selectAll("text").attr("fill","#898781").attr("font-size",10);
+
+  g.append("text").attr("x",iW/2).attr("y",iH+36)
+    .attr("text-anchor","middle").attr("font-size",11).attr("fill","#898781")
+    .text("Frames (60fps)");
+  g.append("text").attr("transform","rotate(-90)")
+    .attr("x",-iH/2).attr("y",-42)
+    .attr("text-anchor","middle").attr("font-size",11).attr("fill","#898781")
+    .text("Position error (m)");
+
+  const leg=svg.append("g").attr("transform",`translate(${mL},8)`);
+  [["#2a78d6","Ground truth (solver)"],["#eda100","Neural rollout error"],["#e24b4a","Visible threshold"]].forEach(([c,l],i)=>{
+    leg.append("rect").attr("x",i*185).attr("y",0).attr("width",10).attr("height",10).attr("rx",2).attr("fill",c);
+    leg.append("text").attr("x",i*185+14).attr("y",9).attr("font-size",10).attr("fill","#666").text(l);
+  });
+
+  return svg.node();
+}
+```
+
+After that, the arbiter — the piece that decides which path each object takes 
+per frame. That's where the interesting engineering is.
+
+3D is the end goal. Steam Deck support after that, maybe.
+
+[^1]: Catto's GDC papers are genuinely some of the best technical writing in 
+gamedev. https://box2d.org/publications/
+
+[^2]: This is also kind of what the paper "Learning to Simulate Complex Physics 
+with Graph Networks" (Sanchez-Gonzalez et al., ICML 2020) does, except they use 
+graph neural nets and I am using a plain MLP. https://arxiv.org/abs/2002.09405
+
+[^3]: The video logging runs in a background thread so it doesn't block the GPU 
+during training. Small thing but it matters.
+
+[^4]: "On the Continuity of Rotation Representations in Neural Networks" — Zhou 
+et al., CVPR 2019. Short version: don't use naive quaternion MSE loss, it breaks. 
+https://arxiv.org/abs/1812.07035
