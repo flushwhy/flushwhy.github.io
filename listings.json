@@ -1,0 +1,30 @@
+[
+  {
+    "listing": "/posts.html",
+    "items": [
+      "/posts/why-reading-is-important/index.html",
+      "/posts/how-to-think-about-memory/index.html",
+      "/posts/a-look-at-sovereign-network/index.html",
+      "/posts/actual-use-for-blockchains/index.html",
+      "/posts/a-problem-in-unity/index.html",
+      "/posts/languages-elitism-and-social-media/index.html",
+      "/posts/my-opinion-on-crypto/index.html",
+      "/posts/the-direction-i-am-going-with-fe/index.html",
+      "/posts/how-i-think-about-design/index.html"
+    ]
+  },
+  {
+    "listing": "/index.html",
+    "items": [
+      "/posts/why-reading-is-important/index.html",
+      "/posts/how-to-think-about-memory/index.html",
+      "/posts/a-look-at-sovereign-network/index.html",
+      "/posts/actual-use-for-blockchains/index.html",
+      "/posts/a-problem-in-unity/index.html",
+      "/posts/languages-elitism-and-social-media/index.html",
+      "/posts/my-opinion-on-crypto/index.html",
+      "/posts/the-direction-i-am-going-with-fe/index.html",
+      "/posts/how-i-think-about-design/index.html"
+    ]
+  }
+]
