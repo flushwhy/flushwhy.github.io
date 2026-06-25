@@ -1,0 +1,59 @@
+---
+title: "A Problem in Unity"
+date: "2026-01-07"
+description: "The cons, cons, and cones of Unity as a service."
+categories: [android, devlog, opinion]
+---
+
+This isn't going to be my normal devlog, or opinion piece. I am going to be speaking about my trials and tribulations with Unity, and "Unity as a service".[^1] Their weird practices, awkward appeals, and most importantly their "authoritative as a service platform." My game that I have been working on — learning a side of the development world I never learned, also known as mobile games — has been one of the most challenging and hardest things I have ever done. One big reason like I have talked about before is the major updates to Isocial and so on in Unity 6 and things like GPGS lagging to get an update out for it. The updates to the Play Store, and how Android handles developer devices have been a giant hoop to jump through.
+
+Even with all of this I have also been learning Unity's CI/CD, and all the stuff in the Unity dashboard over this time. I want to pause right here and say the line between Unity the engine, and other parts of Unity is being blurred — in a nontransparent way. I think it's wrong, and I don't like it. For example if your Unity Ads account is suspended for some reason you lose access to CI/CD, lobbies, and even Cloud repos. You lose access to services you're paying for out of pocket to make your game work. The idea that a bot or "human" could make a decision that takes all your games that are connected to that Unity org offline at once is insane to me. They will do all of this with no emails, warnings, or talks of any kind. This assumes guilt in an area where the margin for error is significant. This will be my account of what happened to me.
+
+> **Before I go on:** I am not saying to not use Unity as a service, or Unity Engine. If you assume that it's because you feel the need to defend them and get foil gold stars from them — I am telling you my experience, and what I learned from this. If anything is a lie, Unity has all my information, and I welcome them to sue me for defamation.
+
+> My account is in appeal, I am guessing. I don't actually know. I submitted a ticket, and then I was told to go to this forum that looked like a Google Forms doc, and fill it out. I did all of that so I guess I am? This company makes billions a year and has some indie developer portal as your appeal — your lifeline.
+
+---
+
+## History
+
+I am not going to go into a full history of my game or anything like that. I started it, and got the first build into closed testing in about 48 hours after starting it. I had never dealt with the mobile side of Unity, or Play Console before. It was a fun time though — I spent a ton of time learning things like mobile UX, and other things I had no idea about like app signing. I would like to point out this was like a month after Unity 6 came out. Nothing worked right, Unity was adding IronSource to its stack, and if something did update the docs weren't up to date. It was a mess to get started with.
+
+So I started this in March or April of last year. Moving on to end of the year, we had that massive Unity bug that needed an engine update. I did that, but the code I was working on when I pushed that update didn't work in prod so I had to figure all of that out. I got it working, and then Unityads — or LevelPlay Ads whatever they are calling it now — updated to v9 and it broke everything. My ads handler, my store buy, and nothing worked right. So I had to figure that out, and I rebuilt the ads handler from the ground up. It finally started working again in October. That was in closed and internal testing for the rest of October, and I forgot about it until around Christmas, so I pushed it to prod shortly after Christmas.
+
+December was my biggest month for ads, getting like 5-6 dollars (I have an active DAU of 5 users on avg), and on January 1st I woke up to a message on my Unity dashboard saying "Your organization has been locked" — that my dashboard access had been revoked for violation of the [Unity Gaming Services Terms of Service](https://unity.com/legal/one-operate-services-terms-of-service). Then it goes on to say about the many ways my account could have been banned, and that I need to read things like the [Invalid Activity Policy](https://unity.com/legal/invalid-activity-policy). I never got an email, I never got a warning, or anything. I woke up on the first to my account being banned, needing to submit a ticket for something I have no idea what I did, or could have done.
+
+I personally think it has something to do with how the ads are newly handled on my end, but I wouldn't know. They provided zero explanation or warning. My game isn't installed on my phone (the only device I own that could have it installed) because I couldn't figure out how to remove the sideloaded version that gets installed. It still thinks I have a sideloaded dev version installed no matter what. It's not something I did.
+
+---
+
+## The Invalid Activity Policy Leaves a Ton of Questions
+
+To me, the way the revoke is worded is made to sound like "You know what you did!" and "You tried to defraud us you worthless trash." Maybe that's because I am mad. Anyway, you're going to see the word "Publisher" a lot — just know that means Developer, the person or company that develops the game.
+
+With all of that being said, most of it is common sense. Like don't pay a bot farm to spam your ads for you, and so on. What I found interesting was the 2nd-to-last and last lines:
+
+> "For clarity, Invalid Activity includes both intentional and/or fraudulent traffic, as well as accidental traffic generated by publishers or End-Users."
+
+and
+
+> "The determination of what constitutes Invalid Activity under this policy will be made in Unity's sole discretion."
+
+They are saying here that any traffic can be Invalid Activity, and that if someone doesn't like you they can commit Invalid Activity on your game or app, and Unity will side with them. In my game I don't track ad data, I don't have a way of blocking "troubled users," and I also can't block my app from being uploaded to 3rd party sites where it can be downloaded on questionable devices.[^2]
+
+I am going to say this again for the people in the back. I never got an email, alert, or notification that something was wrong. For whatever reason, my future, my app, and my business didn't warrant any notice of action or warning. That in my opinion is black and white evidence of what Unity thinks about game developers. From the per-install pricing they tried to do, and now this — it's a really bad company. I am probably going to move to Defold, and more open tools that replace Unity at its core for mobile games.
+
+I also don't understand "automatically refreshing Ads" — they have a feature in both the API and the service that refreshes them for you. That is an odd thing to flag. I am going to assume that if I don't understand it, it wasn't created for me.
+
+I didn't really understand "generating traffic from applications which are unapproved VPN applications" either. Where is the list of approved VPN applications, and how could I enforce this for my game? Unity is scared of the transparency monster lol.
+
+And finally this one: "manually clicking on Ads by publisher's employees or agents outside of limited, customary Application testing." This one makes sense. I would like to know how that works with open projects though. Is everyone that has commits an agent or employee? Or is it only people on the Unity org?
+
+---
+
+## What Does All of This Mean?
+
+My ads account was flagged and I was locked out of my Unity Dashboard. I was locked from the source code of my game, I was locked from the keystore that is used to sign updates, and I was locked from all other Unity services. To me this is a big security risk. I have my key and code in a place I can no longer access to remove or manage. After the Salesforce hack with env variables it made me not trust anyone with that info. Unity has also been guilty of shady business practices as of late. I am not saying they would do anything with that, but I am saying they would hold on to this info and then fail to protect it.
+
+[^1]: I am using "as a service" to mean any Unity added sugar like Player auth, eco, and so on.
+[^2]: I fully support 3rd party app stores, and I welcome any and all mirrors of my games or apps. I don't think I should be held accountable for someone using my game through one and that getting my account banned (I don't know if that happened, but it could).

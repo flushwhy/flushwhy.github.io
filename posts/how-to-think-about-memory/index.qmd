@@ -1,0 +1,134 @@
+---
+title: "How to Think About Memory"
+date: "2026-04-11"
+description: "Memory is the most critical component of a computer. So why is it so often an afterthought? A guide to writing memory-efficient code in C, C++, and Odin."
+categories: [design, opinion, programming]
+---
+
+Memory is the most critical component of a computer. A program lives and dies by its cache misses, its jumps, and its memory alignment. So why is memory so often an afterthought? We can have both readable code and code that is memory-safe and cache-friendly. In this post, I will go over the "dos, hows, and don'ts" of writing memory-efficient code in C, C++, and Odin.
+
+---
+
+## Let's Start With a Question
+
+If you needed to model a kitchen — complete with a table, chairs, bowls, and spoons — how would you go about it?
+
+A common "Object-Oriented" answer is to have a `KitchenItem` base class, which is then inherited by `BowlItem`, `ChairItem`, and so on. This is a disaster for a modern CPU.
+
+The biggest issue is pointer chasing and v-table bloat. Every time you call a virtual `update()` function, the CPU has to look up a *v-table pointer*. This wastes precious L1/L2 cache space on metadata rather than actual data. Furthermore, because these objects are often scattered in memory, the CPU can't effectively "prefetch" the next item. This makes the data "rigid," making multi-threading difficult and preventing the compiler from using SIMD (Single Instruction, Multiple Data) like SSE or AVX — which could otherwise provide a 4x–8x performance boost on a single core.
+
+---
+
+### A Better Way: The Two-Struct System
+
+A better approach is to separate your data based on how often it is used. We can split our "Kitchen Item" into two distinct structures:
+
+- **Hot Data (Position):** Tightly packed, aligned memory that the CPU can stream through.
+- **Cold Data (Metadata):** Heavy data like textures or names that are only needed occasionally.
+
+---
+
+### The "Don't": Heavy OOP (C++)
+
+```cpp
+class KitchenItem {
+public:
+    virtual void update(float dt) = 0; // V-table pointer bloat
+    float x, y, z;
+    char texture_path[256]; // "Cold" data polluting the cache
+};
+```
+
+Every `KitchenItem` in memory carries 256 bytes of texture path whether you're using it or not. When you iterate a list of 1000 items calling `update()`, the CPU is loading all that cold data into cache even though it only needs `x, y, z`. Cache line wasted. Prefetch broken.
+
+---
+
+### The "Do": Data-Oriented Design (C)
+
+```c
+// Hot path: only position data, tightly packed
+typedef struct {
+    float x, y, z;
+} KitchenItemPos;
+
+// Cold path: everything you need infrequently
+typedef struct {
+    char texture_path[256];
+    char name[64];
+    int  item_id;
+} KitchenItemMeta;
+
+// Store them in separate arrays
+KitchenItemPos  positions[MAX_ITEMS]; // CPU loves this
+KitchenItemMeta metadata[MAX_ITEMS];  // Only touched when needed
+```
+
+Now when you update 1000 items, the CPU streams through a tight array of `{x, y, z}` structs. No pointer chasing. No wasted cache lines. SIMD becomes possible because the data is predictably laid out.
+
+---
+
+### Odin Makes This Pattern Natural
+
+Odin's struct-of-arrays approach pushes you toward this pattern by default:
+
+```odin
+Kitchen_Items :: struct {
+    // Hot data — update every frame
+    x, y, z: [MAX_ITEMS]f32,
+
+    // Cold data — rarely touched
+    texture_path: [MAX_ITEMS][256]u8,
+    name:         [MAX_ITEMS][64]u8,
+}
+```
+
+Iterating positions in Odin becomes a tight loop over `f32` slices, which the compiler can auto-vectorize without much convincing.
+
+---
+
+## Stack vs Heap: Know Where Your Data Lives
+
+One of the things I didn't understand when I started in C was the difference between stack and heap allocation and why it matters for performance.
+
+**Stack allocation** is fast because it's just a pointer decrement. The OS manages it at a hardware level. But it's limited — typically 1–8 MB — and the data lives and dies with the function scope.
+
+**Heap allocation** (`malloc`, `new`) is flexible but slow because it involves a syscall and potential fragmentation. Scattered heap allocations are one of the biggest causes of cache misses in real codebases.
+
+The rule I follow: **allocate on the stack by default, heap only when you need dynamic lifetime or large buffers.** If you find yourself `malloc`-ing small structs inside a hot loop, that's a red flag.
+
+---
+
+## Alignment Matters More Than You Think
+
+CPUs read memory in chunks called cache lines — typically 64 bytes. If your struct straddles two cache lines, the CPU has to fetch *two* lines to read *one* struct. That's a 2x penalty just from bad layout.
+
+```c
+// Bad: 'flag' causes padding that splits the struct
+struct Bad {
+    char flag;   // 1 byte
+    // 7 bytes padding added by compiler
+    double value; // 8 bytes
+}; // Total: 16 bytes, awkwardly padded
+
+// Better: largest members first
+struct Good {
+    double value; // 8 bytes
+    char flag;    // 1 byte
+    // 7 bytes padding at end (less harmful)
+}; // Total: 16 bytes, but value is aligned
+```
+
+For hot-path structs, I always check the layout with `sizeof` and `offsetof` to make sure nothing surprising is happening.
+
+---
+
+## The Takeaway
+
+Memory layout isn't a micro-optimization you add at the end. It's an architectural decision you make up front. The good news is it doesn't have to be complicated:
+
+1. Separate hot data from cold data
+2. Prefer arrays of structs-of-data over polymorphic object hierarchies in hot paths
+3. Default to stack allocation, be deliberate about heap
+4. Check your struct alignment when performance matters
+
+You don't have to write every line of code like this — most of your codebase doesn't touch hot paths. But when it does, understanding how your data sits in memory is the difference between code that runs and code that *flies*.

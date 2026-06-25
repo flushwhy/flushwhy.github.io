@@ -1,0 +1,24 @@
+---
+title: "Why Reading Is Important"
+date: "2026-06-17"
+description: "How I went from hating reading to it being one of the most useful things I do, and what that has to do with how I think about learning and teaching."
+categories: [opinion]
+---
+
+As I have gotten older I have started to read more, and listen to more audiobooks. I wasn't big on reading, and found it a chore during my childhood because of my Dyslexia and ADHD. It made it hard to get reading right, and then I would start to struggle with it and have to fight my ADHD to stay with it. I still read, just for classes, and not much else.
+
+I didn't start reading for fun until I was 16-17 and learned about military books and history books. The Boer War was one of my top reads for a long time. Then I started getting into art history, and books like *Figure Drawing* by Andrew Loomis.
+
+I didn't like the dry books like *The C Programming Language* that I give a ton of credit for starting my software engineering journey. What I enjoy are books that let the reader in on the thought process and reasoning behind what we are talking about. That is the same for videos, and everything else. I look at books like a stamp of time — of one's knowledge in something. Novels and others wouldn't fall into this category obviously.
+
+I am not reading a Python book because I want a copy-paste of the docs and basic examples. I am reading your Python book because I want to understand the author's way and reasons for doing things. I view this like the "free market" of ideas — that we are really the sum of others' ideas that work for us, and some of our own ideas built on top of those. Human history is basically built on this idea.
+
+I really started to understand this when I started to teach others to code and game dev. My idea on teaching is to give a bump in the right direction and make sure they aren't pointing a loaded gun at their foot (no C jokes here haha). I want to make sure you're actively trying to do something and getting feedback. A million books, tutorials, and blogs can tell you what a function or an array is — I want you to try it and fail. I want you to break and destroy the program, compiler, or whatever else while I am there. So I can help you get back to square one and understand this foreign concept. You can read the blogs, docs, and watch tutorials on your own time. My job is to make sure you're actively trying, and to help when your environment breaks or you're stuck.
+
+I am not the best teacher — I think I am still very junior with my teaching stuff. I try though. I hope that the people I have helped so far have created some awesome and cool projects that are fun!
+
+What I mean by all of this is I have a very "it looks good, but does it hold up in deployment?" mindset. At the end of the day no thoughts of OOP, FP, or any other paradigm will save you from bad coding practices. You can't use Rust or some other language to save you from this either. You have to understand what failure looks like, and what to do when it fails at all levels. That is where reading has helped a lot for me. The mental model I hold from others sharing their wins and mistakes through books, blogs, and devblogs has really helped me not create the same ones in return.
+
+I want to say that this level of reading takes a lot of critical thinking and reasoning skills. I like hearing others' ideas no matter how wrong or right they are, and using my mental model of knowledge to reason and either object or integrate them into my own base. This sounds very robotic, but this is the idea of critical thinking and reasoning. Most of the time you won't take an idea 100% from someone else — you might only take something like 5% or less, or a lot more. There are no set rules on this. That's what is awesome about reading and critical thinking: you have to trust yourself to make the right calls for yourself.
+
+Something is either going to work well, work well but have issues, or not work at all. You should be more scared of not finding bugs in testing/debug and then finding them after it's deployed to people, than worrying about failing.

@@ -1,0 +1,46 @@
+project:
+  type: website
+  output-dir: _site
+
+website:
+  title: "flushwhy"
+  description: "writing about code, games, and whatever else"
+  favicon: favicon.ico
+
+  navbar:
+    left:
+      - href: index.qmd
+        text: home
+      - href: posts.qmd
+        text: writing
+      - href: https://flushwhy.github.io/labs/about
+        text: about
+      - href: https://flushwhy.github.io/labs
+        text: "→ labs"
+    right:
+      - icon: github
+        href: https://github.com/flushwhy
+        aria-label: GitHub
+      - icon: rss
+        href: index.xml
+        aria-label: RSS
+
+  page-footer:
+    left: "flushwhy · [labs ↗](https://flushwhy.github.io/labs)"
+    right: "built with [quarto](https://quarto.org) and love"
+    center: "© 2026 flushwhy"
+
+execute:
+  engine: markdown
+
+format:
+  html:
+    theme:
+      - cosmo
+      - flushwhy.scss
+    highlight-style: monokai
+    code-copy: true
+    code-overflow: wrap
+    toc: true
+    toc-depth: 3
+    toc-title: "on this page"
