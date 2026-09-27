@@ -1,0 +1,339 @@
+---
+title: "Next Steps with GameJolt Unreal"
+date: "2025-09-26"
+description: "Some ideas for the next steps for the plugin, and some fixes and changes planned for the 1.5 update."
+categories: [blog, gamedev]
+---
+
+So, this is something I have been working on and trying to figure out: **what is the next step?**[^1]
+
+What I mean by that is right now, I really have a wrapper around the Game Jolt API that turns API calls into Unreal-friendly calls[^2]. That works, and it gets the job done, but I don't think it is quite where I want the plugin to end up.
+
+So I want to lay out some of the plans and ideas I have come up with for the next step—specifically, what I am thinking about for the **1.5 update**.
+
+I am still planning this update, so I would also really like to hear what other developers would like to see in future versions.
+
+## What I want to do in 1.5
+
+One of the big things I wanted to improve is **debugging**.
+
+I want richer debug messages and a better way of handling logs, especially when something goes wrong with authentication, sessions, scores, or the data store.
+
+One idea I have been playing with is adding a small debug widget along with editor validation.
+
+The widget might look something like this:
+
+```text
+┌──────────────────────────────┐
+│       GAME JOLT DEBUG        │
+├──────────────────────────────┤
+│ User:       ExampleUser      │
+│ User ID:    123456           │
+│ Auth:       ✓                │
+│ Session:    ✓                │
+│ Last Ping:  12 sec ago       │
+├──────────────────────────────┤
+│ [Test Login]                 │
+│ [Open Session]               │
+│ [Ping]                       │
+│ [Close Session]              │
+└──────────────────────────────┘
+```
+
+The idea isn't necessarily that this would ship as part of the player's game. This would primarily be a development and debugging tool.
+
+I'd also like the plugin to be a little smarter about configuration.
+
+For example, if the Game Jolt Game ID or Private Key hasn't been configured, Unreal could give you something like:
+
+```text
+⚠ Game Jolt API credentials are not configured.
+
+Configure them in Project Settings → Plugins → Game Jolt API.
+```
+
+That is a much better experience than finding out that something doesn't work several API calls later.
+
+---
+
+## Moving beyond API wrappers
+
+The other major thing I want to work on is moving the plugin away from being **just a collection of wrapped API calls**.
+
+I want to make it easier to use from C++, while still keeping Blueprint support where it makes sense.
+
+With the direction I expect Unreal development to take in the future, I have been thinking a lot more about how I can make the plugin work well for C++ developers without making the API painful to use.
+
+At the same time, I don't want to abandon Unreal 4 or Unreal 5 users. A lot of indie developers are still using older versions of Unreal, and Game Jolt itself is an indie-focused platform.
+
+So ideally, I want the plugin to support UE4, UE5, and future Unreal versions while giving developers a clean API regardless of which version they are using.
+
+This is something I have fought with quite a bit, and I think I finally have a better idea of what I want the plugin to look like from the user's perspective.[^3]
+
+Right now, if you want to log a user in through Blueprint, you would have something like:
+
+```text
+Event BeginPlay
+  → GJ Login (Username, Token)
+      → On Complete (bSuccess = true)
+          → GJ Open Session
+```
+
+And in C++:
+
+```cpp
+#include "UGameJoltBlueprintLibrary.h"
+
+void AMyPlayerController::AuthenticatePlayer(
+    const FString& Username,
+    const FString& UserToken)
+{
+    FOnAuthUserComplete OnComplete;
+
+    OnComplete.BindLambda(
+        [](bool bSuccess,
+           const FGameJoltUser& User,
+           const FString& ErrorMessage)
+        {
+            if (bSuccess)
+            {
+                UE_LOG(
+                    LogTemp,
+                    Log,
+                    TEXT("Authenticated: %s"),
+                    *User.username
+                );
+            }
+            else
+            {
+                UE_LOG(
+                    LogTemp,
+                    Error,
+                    TEXT("Auth failed: %s"),
+                    *ErrorMessage
+                );
+            }
+        }
+    );
+
+    UGameJoltBlueprintLibrary::Login(
+        this,
+        Username,
+        UserToken,
+        OnComplete
+    );
+}
+```
+
+There is nothing inherently wrong with this. In fact, this was intentional.
+
+When I first started the plugin, I didn't want the library to hide state from the developer. I felt like the developer should be explicit about what was happening and when it was happening.
+
+But after using the plugin and thinking about how I actually want people to use it, I've started to change my mind.
+
+I think there is a point where giving the developer *complete* control just means making them write the same boilerplate over and over again.
+
+So instead, I want to make the common behavior the default.
+
+Ideally, I'd like the C++ API to look more like this:
+
+```cpp
+#include "UGameJolt.h"
+
+void AMyPlayerController::AuthenticatePlayer(
+    const FString& Username,
+    const FString& UserToken)
+{
+    UGameJolt::Login(Username, UserToken);
+}
+```
+
+The plugin can handle the callback internally and expose a delegate/event for developers who want to react to the result.
+
+That means the developer doesn't have to manually manage the callback every time they want to perform a normal login.
+
+If something fails, the plugin should provide an error that the developer can handle if they need to, without forcing that error-handling code into every single call.
+
+The old way would still be supported. That's an important part of this change—I don't want to take away control, but rather provide **good defaults**.
+
+---
+
+## Let the plugin handle the boring stuff
+
+I also want to move more of the session management behind the scenes.
+
+For example, the plugin could have settings like:
+
+* Automatically open session after login
+* Automatically close session when the game exits
+* Automatically ping session
+* Configure ping interval
+
+All of these would be optional. If you don't like the automatic behavior, turn it off and build your own session management.
+
+Whether you want to ping every 5, 30, or 60 seconds, you can set it up to fit your workflow.
+
+The goal isn't to lock developers into one way of doing things. It's to make the normal case require less work.
+
+I think that is the biggest philosophy change I want to make with 1.5. When I first built the plugin, I wanted the developer to explicitly own the state. Now I think the better approach is:
+
+> **The plugin should own the state by default, but the developer should always be able to take control of it.**
+
+That feels like a much better balance.
+
+---
+
+## Release process
+
+Those are the big changes I currently have planned for 1.5.
+
+There are also some smaller infrastructure changes happening around the project. I am currently moving most of my repositories over to `release-please` so I can have a more consistent release process, and I will be moving this project over to it as well.
+
+Hopefully, that should make releases a little less manual and make it easier to keep the changelog and versioning consistent.
+
+---
+
+## Implementation Ideas
+
+Now we get to the part I am still trying to figure out. I have three different approaches in mind for how I could actually implement these changes.
+
+### 1. "Subsystem Lite"
+
+I removed the subsystem from the early versions of the plugin going into 1.0, but I've been thinking about bringing it back in a much lighter form.
+
+I don't want to marry the entire plugin to the subsystem, but I think it could provide a much cleaner interface for what I am trying to accomplish.
+
+Instead of:
+
+```text
+Get something
+→ Call function
+→ Create callback
+→ Handle callback
+```
+
+you could have:
+
+```text
+Get Game Jolt Subsystem
+        ↓
+      Login
+        ↓
+    On Login
+```
+
+The subsystem would initially expose things like:
+
+```text
+UGameInstanceSubsystem
+└── UGameJoltSubsystem
+    ├── Login()
+    ├── Logout()
+    ├── OpenSession()
+    ├── CloseSession()
+    ├── SubmitScore()
+    ├── FetchScores()
+    ├── FetchTrophies()
+    ├── SetUserData()
+    └── GetUserData()
+```
+
+Which, if we're being honest, is basically what the plugin already does. The difference is the interface.
+
+This would get rid of the need to pass `this` around and would give me a cleaner place to manage delegates, state, sessions, authentication, and error handling. And yes, I love lambdas, but I think this would be a better flow for the person actually using the plugin.
+
+### 2. "Don't Rework It — Improve the DX/UX"
+
+The second option is much less invasive.
+
+Instead of changing the entire architecture, I could keep the current API and focus on improving the developer experience around it. That would include things like the debug widget and editor validation I mentioned earlier.
+
+Another thing I would like to add is proper result structures. Right now, a lot of operations essentially return:
+
+```cpp
+bool bSuccess;
+FString ErrorMessage;
+```
+
+I would rather have something like:
+
+```cpp
+FGameJoltResult
+{
+    bool bSuccess;
+    FString ErrorMessage;
+    int32 ErrorCode;
+};
+```
+
+That gives the plugin a standardized way to report errors. Instead of having every API call invent its own error handling, the plugin could provide consistent error codes and result structures across the entire API.
+
+Then we could build more useful structures on top of that:
+
+```cpp
+FGameJoltUser
+FGameJoltScore
+FGameJoltTrophy
+FGameJoltData
+FGameJoltResult
+```
+
+This wouldn't fundamentally change how the plugin works—it would just make the existing API cleaner and easier to build on.
+
+### 3. Something in between
+
+The third option is probably the one I am currently leaning toward.
+
+Instead of completely replacing the existing API or doing nothing more than polishing it, I could introduce a higher-level interface while keeping the current API underneath it.
+
+Something like:
+
+```text
+                 Game Jolt Plugin
+                       │
+          ┌────────────┴────────────┐
+          │                         │
+    High-Level API             Low-Level API
+          │                         │
+    GameJoltSubsystem       Blueprint Library
+          │                         │
+          └────────────┬────────────┘
+                       │
+                  API Layer
+                       │
+                  Game Jolt
+```
+
+The high-level API would handle the common cases (authentication state, session state, automatic pings, automatic cleanup, delegates, and error handling). The lower-level API would still exist for developers who want direct control.
+
+That would let the plugin have sane defaults without turning it into a black box, and honestly, that is probably the direction I want the plugin to take.
+
+---
+
+## So, what's next?
+
+I don't have all of this figured out yet. That's kind of the point of this post.
+
+The 1.5 update is still in the planning stage, and I want to use this time to figure out what would actually be useful rather than just adding features because I can.
+
+The big question I keep coming back to is:
+
+**How much should the plugin do for you?**
+
+I don't want it to be a thin HTTP wrapper where you have to manage every piece of state yourself. But I also don't want it to become a giant black box where you have no idea what is happening underneath.
+
+I think there is a good middle ground somewhere between those two. For 1.5, I want to find it.
+
+If you are using the plugin, I'd especially like to hear what would make it easier for your workflow:
+* Would you prefer a subsystem?
+* A simpler C++ API?
+* Better Blueprint nodes?
+* Better debugging tools?
+* More Game Jolt API support?
+* Or something completely different?
+
+Let me know.
+
+[^1]: One small step for man, one giant leap for mankind. Some would say.
+[^2]: "Safe" being that it's running through Unreal-managed code, not because I magically made HTTP requests safe.
+[^3]: The user being the developer using the plugin, not the end user playing the game.
