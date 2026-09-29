@@ -1,0 +1,885 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.10.18">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="dcterms.date" content="2025-09-26">
+<meta name="description" content="Some ideas for the next steps for the plugin, and some fixes and changes planned for the 1.5 update.">
+
+<title>Next Steps with GameJolt Unreal – flushwhy</title>
+<style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: 1.5em;}
+div.column{flex: auto;}
+@media screen {
+div.columns{gap: min(4vw, 1.5em);}
+div.column{overflow-x: auto;}
+}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="../../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="../../site_libs/quarto-nav/headroom.min.js"></script>
+<script src="../../site_libs/clipboard/clipboard.min.js"></script>
+<script src="../../site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="../../site_libs/quarto-search/fuse.min.js"></script>
+<script src="../../site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="../../">
+<link href="../../favicon.ico" rel="icon">
+<script src="../../site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="../../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="../../site_libs/quarto-html/popper.min.js"></script>
+<script src="../../site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="../../site_libs/quarto-html/anchor.min.js"></script>
+<link href="../../site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="../../site_libs/quarto-html/quarto-syntax-highlighting-3044955a09bcbf03f1e04a9a222dfd75.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="../../site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="../../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="../../site_libs/bootstrap/bootstrap-1691efd518e47e2631a2437e6562a6bc.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+
+
+</head>
+
+<body class="nav-fixed quarto-light">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+    <nav class="navbar navbar-expand-lg " data-bs-theme="dark">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container mx-auto">
+    <a class="navbar-brand" href="../../index.html">
+    <span class="navbar-title">flushwhy</span>
+    </a>
+  </div>
+            <div id="quarto-search" class="" title="Search"></div>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" role="menu" aria-expanded="false" aria-label="Toggle navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+  <span class="navbar-toggler-icon"></span>
+</button>
+          <div class="collapse navbar-collapse" id="navbarCollapse">
+            <ul class="navbar-nav navbar-nav-scroll me-auto">
+  <li class="nav-item">
+    <a class="nav-link" href="../../index.html"> 
+<span class="menu-text">home</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../../posts.html"> 
+<span class="menu-text">writing</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="https://flushwhy.github.io/labs/about"> 
+<span class="menu-text">about</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="https://flushwhy.github.io/labs"> 
+<span class="menu-text">→ labs</span></a>
+  </li>  
+</ul>
+            <ul class="navbar-nav navbar-nav-scroll ms-auto">
+  <li class="nav-item compact">
+    <a class="nav-link" href="https://github.com/flushwhy"> <i class="bi bi-github" role="img" aria-label="GitHub">
+</i> 
+<span class="menu-text"></span></a>
+  </li>  
+  <li class="nav-item compact">
+    <a class="nav-link" href="../../index.xml"> <i class="bi bi-rss" role="img" aria-label="RSS">
+</i> 
+<span class="menu-text"></span></a>
+  </li>  
+</ul>
+          </div> <!-- /navcollapse -->
+            <div class="quarto-navbar-tools">
+</div>
+      </div> <!-- /container-fluid -->
+    </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">on this page</h2>
+   
+  <ul>
+  <li><a href="#what-i-want-to-do-in-1.5" id="toc-what-i-want-to-do-in-1.5" class="nav-link active" data-scroll-target="#what-i-want-to-do-in-1.5">What I want to do in 1.5</a></li>
+  <li><a href="#moving-beyond-api-wrappers" id="toc-moving-beyond-api-wrappers" class="nav-link" data-scroll-target="#moving-beyond-api-wrappers">Moving beyond API wrappers</a></li>
+  <li><a href="#let-the-plugin-handle-the-boring-stuff" id="toc-let-the-plugin-handle-the-boring-stuff" class="nav-link" data-scroll-target="#let-the-plugin-handle-the-boring-stuff">Let the plugin handle the boring stuff</a></li>
+  <li><a href="#release-process" id="toc-release-process" class="nav-link" data-scroll-target="#release-process">Release process</a></li>
+  <li><a href="#implementation-ideas" id="toc-implementation-ideas" class="nav-link" data-scroll-target="#implementation-ideas">Implementation Ideas</a>
+  <ul class="collapse">
+  <li><a href="#subsystem-lite" id="toc-subsystem-lite" class="nav-link" data-scroll-target="#subsystem-lite">1. “Subsystem Lite”</a></li>
+  <li><a href="#dont-rework-it-improve-the-dxux" id="toc-dont-rework-it-improve-the-dxux" class="nav-link" data-scroll-target="#dont-rework-it-improve-the-dxux">2. “Don’t Rework It — Improve the DX/UX”</a></li>
+  <li><a href="#something-in-between" id="toc-something-in-between" class="nav-link" data-scroll-target="#something-in-between">3. Something in between</a></li>
+  </ul></li>
+  <li><a href="#so-whats-next" id="toc-so-whats-next" class="nav-link" data-scroll-target="#so-whats-next">So, what’s next?</a></li>
+  </ul>
+</nav>
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">Next Steps with GameJolt Unreal</h1>
+  <div class="quarto-categories">
+    <div class="quarto-category">blog</div>
+    <div class="quarto-category">gamedev</div>
+  </div>
+  </div>
+
+<div>
+  <div class="description">
+    Some ideas for the next steps for the plugin, and some fixes and changes planned for the 1.5 update.
+  </div>
+</div>
+
+
+<div class="quarto-title-meta">
+
+    
+    <div>
+    <div class="quarto-title-meta-heading">Published</div>
+    <div class="quarto-title-meta-contents">
+      <p class="date">September 26, 2025</p>
+    </div>
+  </div>
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<p>So, this is something I have been working on and trying to figure out: <strong>what is the next step?</strong><a href="#fn1" class="footnote-ref" id="fnref1" role="doc-noteref"><sup>1</sup></a></p>
+<p>What I mean by that is right now, I really have a wrapper around the Game Jolt API that turns API calls into Unreal-friendly calls<a href="#fn2" class="footnote-ref" id="fnref2" role="doc-noteref"><sup>2</sup></a>. That works, and it gets the job done, but I don’t think it is quite where I want the plugin to end up.</p>
+<p>So I want to lay out some of the plans and ideas I have come up with for the next step—specifically, what I am thinking about for the <strong>1.5 update</strong>.</p>
+<p>I am still planning this update, so I would also really like to hear what other developers would like to see in future versions.</p>
+<section id="what-i-want-to-do-in-1.5" class="level2">
+<h2 class="anchored" data-anchor-id="what-i-want-to-do-in-1.5">What I want to do in 1.5</h2>
+<p>One of the big things I wanted to improve is <strong>debugging</strong>.</p>
+<p>I want richer debug messages and a better way of handling logs, especially when something goes wrong with authentication, sessions, scores, or the data store.</p>
+<p>One idea I have been playing with is adding a small debug widget along with editor validation.</p>
+<p>The widget might look something like this:</p>
+<pre class="text"><code>┌──────────────────────────────┐
+│       GAME JOLT DEBUG        │
+├──────────────────────────────┤
+│ User:       ExampleUser      │
+│ User ID:    123456           │
+│ Auth:       ✓                │
+│ Session:    ✓                │
+│ Last Ping:  12 sec ago       │
+├──────────────────────────────┤
+│ [Test Login]                 │
+│ [Open Session]               │
+│ [Ping]                       │
+│ [Close Session]              │
+└──────────────────────────────┘</code></pre>
+<p>The idea isn’t necessarily that this would ship as part of the player’s game. This would primarily be a development and debugging tool.</p>
+<p>I’d also like the plugin to be a little smarter about configuration.</p>
+<p>For example, if the Game Jolt Game ID or Private Key hasn’t been configured, Unreal could give you something like:</p>
+<pre class="text"><code>⚠ Game Jolt API credentials are not configured.
+
+Configure them in Project Settings → Plugins → Game Jolt API.</code></pre>
+<p>That is a much better experience than finding out that something doesn’t work several API calls later.</p>
+<hr>
+</section>
+<section id="moving-beyond-api-wrappers" class="level2">
+<h2 class="anchored" data-anchor-id="moving-beyond-api-wrappers">Moving beyond API wrappers</h2>
+<p>The other major thing I want to work on is moving the plugin away from being <strong>just a collection of wrapped API calls</strong>.</p>
+<p>I want to make it easier to use from C++, while still keeping Blueprint support where it makes sense.</p>
+<p>With the direction I expect Unreal development to take in the future, I have been thinking a lot more about how I can make the plugin work well for C++ developers without making the API painful to use.</p>
+<p>At the same time, I don’t want to abandon Unreal 4 or Unreal 5 users. A lot of indie developers are still using older versions of Unreal, and Game Jolt itself is an indie-focused platform.</p>
+<p>So ideally, I want the plugin to support UE4, UE5, and future Unreal versions while giving developers a clean API regardless of which version they are using.</p>
+<p>This is something I have fought with quite a bit, and I think I finally have a better idea of what I want the plugin to look like from the user’s perspective.<a href="#fn3" class="footnote-ref" id="fnref3" role="doc-noteref"><sup>3</sup></a></p>
+<p>Right now, if you want to log a user in through Blueprint, you would have something like:</p>
+<pre class="text"><code>Event BeginPlay
+  → GJ Login (Username, Token)
+      → On Complete (bSuccess = true)
+          → GJ Open Session</code></pre>
+<p>And in C++:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode cpp code-with-copy"><code class="sourceCode cpp"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="pp">#include </span><span class="im">"UGameJoltBlueprintLibrary.h"</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a><span class="dt">void</span> AMyPlayerController<span class="op">::</span>AuthenticatePlayer<span class="op">(</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>    <span class="at">const</span> FString<span class="op">&amp;</span> Username<span class="op">,</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>    <span class="at">const</span> FString<span class="op">&amp;</span> UserToken<span class="op">)</span></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>    FOnAuthUserComplete OnComplete<span class="op">;</span></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>    OnComplete<span class="op">.</span>BindLambda<span class="op">(</span></span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>        <span class="op">[](</span><span class="dt">bool</span> bSuccess<span class="op">,</span></span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>           <span class="at">const</span> FGameJoltUser<span class="op">&amp;</span> User<span class="op">,</span></span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a>           <span class="at">const</span> FString<span class="op">&amp;</span> ErrorMessage<span class="op">)</span></span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a>        <span class="op">{</span></span>
+<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a>            <span class="cf">if</span> <span class="op">(</span>bSuccess<span class="op">)</span></span>
+<span id="cb4-15"><a href="#cb4-15" aria-hidden="true" tabindex="-1"></a>            <span class="op">{</span></span>
+<span id="cb4-16"><a href="#cb4-16" aria-hidden="true" tabindex="-1"></a>                UE_LOG<span class="op">(</span></span>
+<span id="cb4-17"><a href="#cb4-17" aria-hidden="true" tabindex="-1"></a>                    LogTemp<span class="op">,</span></span>
+<span id="cb4-18"><a href="#cb4-18" aria-hidden="true" tabindex="-1"></a>                    Log<span class="op">,</span></span>
+<span id="cb4-19"><a href="#cb4-19" aria-hidden="true" tabindex="-1"></a>                    TEXT<span class="op">(</span><span class="st">"Authenticated: </span><span class="sc">%s</span><span class="st">"</span><span class="op">),</span></span>
+<span id="cb4-20"><a href="#cb4-20" aria-hidden="true" tabindex="-1"></a>                    <span class="op">*</span>User<span class="op">.</span>username</span>
+<span id="cb4-21"><a href="#cb4-21" aria-hidden="true" tabindex="-1"></a>                <span class="op">);</span></span>
+<span id="cb4-22"><a href="#cb4-22" aria-hidden="true" tabindex="-1"></a>            <span class="op">}</span></span>
+<span id="cb4-23"><a href="#cb4-23" aria-hidden="true" tabindex="-1"></a>            <span class="cf">else</span></span>
+<span id="cb4-24"><a href="#cb4-24" aria-hidden="true" tabindex="-1"></a>            <span class="op">{</span></span>
+<span id="cb4-25"><a href="#cb4-25" aria-hidden="true" tabindex="-1"></a>                UE_LOG<span class="op">(</span></span>
+<span id="cb4-26"><a href="#cb4-26" aria-hidden="true" tabindex="-1"></a>                    LogTemp<span class="op">,</span></span>
+<span id="cb4-27"><a href="#cb4-27" aria-hidden="true" tabindex="-1"></a>                    Error<span class="op">,</span></span>
+<span id="cb4-28"><a href="#cb4-28" aria-hidden="true" tabindex="-1"></a>                    TEXT<span class="op">(</span><span class="st">"Auth failed: </span><span class="sc">%s</span><span class="st">"</span><span class="op">),</span></span>
+<span id="cb4-29"><a href="#cb4-29" aria-hidden="true" tabindex="-1"></a>                    <span class="op">*</span>ErrorMessage</span>
+<span id="cb4-30"><a href="#cb4-30" aria-hidden="true" tabindex="-1"></a>                <span class="op">);</span></span>
+<span id="cb4-31"><a href="#cb4-31" aria-hidden="true" tabindex="-1"></a>            <span class="op">}</span></span>
+<span id="cb4-32"><a href="#cb4-32" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span></span>
+<span id="cb4-33"><a href="#cb4-33" aria-hidden="true" tabindex="-1"></a>    <span class="op">);</span></span>
+<span id="cb4-34"><a href="#cb4-34" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-35"><a href="#cb4-35" aria-hidden="true" tabindex="-1"></a>    UGameJoltBlueprintLibrary<span class="op">::</span>Login<span class="op">(</span></span>
+<span id="cb4-36"><a href="#cb4-36" aria-hidden="true" tabindex="-1"></a>        <span class="kw">this</span><span class="op">,</span></span>
+<span id="cb4-37"><a href="#cb4-37" aria-hidden="true" tabindex="-1"></a>        Username<span class="op">,</span></span>
+<span id="cb4-38"><a href="#cb4-38" aria-hidden="true" tabindex="-1"></a>        UserToken<span class="op">,</span></span>
+<span id="cb4-39"><a href="#cb4-39" aria-hidden="true" tabindex="-1"></a>        OnComplete</span>
+<span id="cb4-40"><a href="#cb4-40" aria-hidden="true" tabindex="-1"></a>    <span class="op">);</span></span>
+<span id="cb4-41"><a href="#cb4-41" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>There is nothing inherently wrong with this. In fact, this was intentional.</p>
+<p>When I first started the plugin, I didn’t want the library to hide state from the developer. I felt like the developer should be explicit about what was happening and when it was happening.</p>
+<p>But after using the plugin and thinking about how I actually want people to use it, I’ve started to change my mind.</p>
+<p>I think there is a point where giving the developer <em>complete</em> control just means making them write the same boilerplate over and over again.</p>
+<p>So instead, I want to make the common behavior the default.</p>
+<p>Ideally, I’d like the C++ API to look more like this:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode cpp code-with-copy"><code class="sourceCode cpp"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="pp">#include </span><span class="im">"UGameJolt.h"</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a><span class="dt">void</span> AMyPlayerController<span class="op">::</span>AuthenticatePlayer<span class="op">(</span></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>    <span class="at">const</span> FString<span class="op">&amp;</span> Username<span class="op">,</span></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>    <span class="at">const</span> FString<span class="op">&amp;</span> UserToken<span class="op">)</span></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>    UGameJolt<span class="op">::</span>Login<span class="op">(</span>Username<span class="op">,</span> UserToken<span class="op">);</span></span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>The plugin can handle the callback internally and expose a delegate/event for developers who want to react to the result.</p>
+<p>That means the developer doesn’t have to manually manage the callback every time they want to perform a normal login.</p>
+<p>If something fails, the plugin should provide an error that the developer can handle if they need to, without forcing that error-handling code into every single call.</p>
+<p>The old way would still be supported. That’s an important part of this change—I don’t want to take away control, but rather provide <strong>good defaults</strong>.</p>
+<hr>
+</section>
+<section id="let-the-plugin-handle-the-boring-stuff" class="level2">
+<h2 class="anchored" data-anchor-id="let-the-plugin-handle-the-boring-stuff">Let the plugin handle the boring stuff</h2>
+<p>I also want to move more of the session management behind the scenes.</p>
+<p>For example, the plugin could have settings like:</p>
+<ul>
+<li>Automatically open session after login</li>
+<li>Automatically close session when the game exits</li>
+<li>Automatically ping session</li>
+<li>Configure ping interval</li>
+</ul>
+<p>All of these would be optional. If you don’t like the automatic behavior, turn it off and build your own session management.</p>
+<p>Whether you want to ping every 5, 30, or 60 seconds, you can set it up to fit your workflow.</p>
+<p>The goal isn’t to lock developers into one way of doing things. It’s to make the normal case require less work.</p>
+<p>I think that is the biggest philosophy change I want to make with 1.5. When I first built the plugin, I wanted the developer to explicitly own the state. Now I think the better approach is:</p>
+<blockquote class="blockquote">
+<p><strong>The plugin should own the state by default, but the developer should always be able to take control of it.</strong></p>
+</blockquote>
+<p>That feels like a much better balance.</p>
+<hr>
+</section>
+<section id="release-process" class="level2">
+<h2 class="anchored" data-anchor-id="release-process">Release process</h2>
+<p>Those are the big changes I currently have planned for 1.5.</p>
+<p>There are also some smaller infrastructure changes happening around the project. I am currently moving most of my repositories over to <code>release-please</code> so I can have a more consistent release process, and I will be moving this project over to it as well.</p>
+<p>Hopefully, that should make releases a little less manual and make it easier to keep the changelog and versioning consistent.</p>
+<hr>
+</section>
+<section id="implementation-ideas" class="level2">
+<h2 class="anchored" data-anchor-id="implementation-ideas">Implementation Ideas</h2>
+<p>Now we get to the part I am still trying to figure out. I have three different approaches in mind for how I could actually implement these changes.</p>
+<section id="subsystem-lite" class="level3">
+<h3 class="anchored" data-anchor-id="subsystem-lite">1. “Subsystem Lite”</h3>
+<p>I removed the subsystem from the early versions of the plugin going into 1.0, but I’ve been thinking about bringing it back in a much lighter form.</p>
+<p>I don’t want to marry the entire plugin to the subsystem, but I think it could provide a much cleaner interface for what I am trying to accomplish.</p>
+<p>Instead of:</p>
+<pre class="text"><code>Get something
+→ Call function
+→ Create callback
+→ Handle callback</code></pre>
+<p>you could have:</p>
+<pre class="text"><code>Get Game Jolt Subsystem
+        ↓
+      Login
+        ↓
+    On Login</code></pre>
+<p>The subsystem would initially expose things like:</p>
+<pre class="text"><code>UGameInstanceSubsystem
+└── UGameJoltSubsystem
+    ├── Login()
+    ├── Logout()
+    ├── OpenSession()
+    ├── CloseSession()
+    ├── SubmitScore()
+    ├── FetchScores()
+    ├── FetchTrophies()
+    ├── SetUserData()
+    └── GetUserData()</code></pre>
+<p>Which, if we’re being honest, is basically what the plugin already does. The difference is the interface.</p>
+<p>This would get rid of the need to pass <code>this</code> around and would give me a cleaner place to manage delegates, state, sessions, authentication, and error handling. And yes, I love lambdas, but I think this would be a better flow for the person actually using the plugin.</p>
+</section>
+<section id="dont-rework-it-improve-the-dxux" class="level3">
+<h3 class="anchored" data-anchor-id="dont-rework-it-improve-the-dxux">2. “Don’t Rework It — Improve the DX/UX”</h3>
+<p>The second option is much less invasive.</p>
+<p>Instead of changing the entire architecture, I could keep the current API and focus on improving the developer experience around it. That would include things like the debug widget and editor validation I mentioned earlier.</p>
+<p>Another thing I would like to add is proper result structures. Right now, a lot of operations essentially return:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb9"><pre class="sourceCode cpp code-with-copy"><code class="sourceCode cpp"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="dt">bool</span> bSuccess<span class="op">;</span></span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>FString ErrorMessage<span class="op">;</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>I would rather have something like:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb10"><pre class="sourceCode cpp code-with-copy"><code class="sourceCode cpp"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>FGameJoltResult</span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">bool</span> bSuccess<span class="op">;</span></span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>    FString ErrorMessage<span class="op">;</span></span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a>    int32 ErrorCode<span class="op">;</span></span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a><span class="op">};</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>That gives the plugin a standardized way to report errors. Instead of having every API call invent its own error handling, the plugin could provide consistent error codes and result structures across the entire API.</p>
+<p>Then we could build more useful structures on top of that:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb11"><pre class="sourceCode cpp code-with-copy"><code class="sourceCode cpp"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>FGameJoltUser</span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>FGameJoltScore</span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>FGameJoltTrophy</span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>FGameJoltData</span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>FGameJoltResult</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>This wouldn’t fundamentally change how the plugin works—it would just make the existing API cleaner and easier to build on.</p>
+</section>
+<section id="something-in-between" class="level3">
+<h3 class="anchored" data-anchor-id="something-in-between">3. Something in between</h3>
+<p>The third option is probably the one I am currently leaning toward.</p>
+<p>Instead of completely replacing the existing API or doing nothing more than polishing it, I could introduce a higher-level interface while keeping the current API underneath it.</p>
+<p>Something like:</p>
+<pre class="text"><code>                 Game Jolt Plugin
+                       │
+          ┌────────────┴────────────┐
+          │                         │
+    High-Level API             Low-Level API
+          │                         │
+    GameJoltSubsystem       Blueprint Library
+          │                         │
+          └────────────┬────────────┘
+                       │
+                  API Layer
+                       │
+                  Game Jolt</code></pre>
+<p>The high-level API would handle the common cases (authentication state, session state, automatic pings, automatic cleanup, delegates, and error handling). The lower-level API would still exist for developers who want direct control.</p>
+<p>That would let the plugin have sane defaults without turning it into a black box, and honestly, that is probably the direction I want the plugin to take.</p>
+<hr>
+</section>
+</section>
+<section id="so-whats-next" class="level2">
+<h2 class="anchored" data-anchor-id="so-whats-next">So, what’s next?</h2>
+<p>I don’t have all of this figured out yet. That’s kind of the point of this post.</p>
+<p>The 1.5 update is still in the planning stage, and I want to use this time to figure out what would actually be useful rather than just adding features because I can.</p>
+<p>The big question I keep coming back to is:</p>
+<p><strong>How much should the plugin do for you?</strong></p>
+<p>I don’t want it to be a thin HTTP wrapper where you have to manage every piece of state yourself. But I also don’t want it to become a giant black box where you have no idea what is happening underneath.</p>
+<p>I think there is a good middle ground somewhere between those two. For 1.5, I want to find it.</p>
+<p>If you are using the plugin, I’d especially like to hear what would make it easier for your workflow: * Would you prefer a subsystem? * A simpler C++ API? * Better Blueprint nodes? * Better debugging tools? * More Game Jolt API support? * Or something completely different?</p>
+<p>Let me know.</p>
+
+
+</section>
+
+
+<div id="quarto-appendix" class="default"><section id="footnotes" class="footnotes footnotes-end-of-document" role="doc-endnotes"><h2 class="anchored quarto-appendix-heading">Footnotes</h2>
+
+<ol>
+<li id="fn1"><p>One small step for man, one giant leap for mankind. Some would say.<a href="#fnref1" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn2"><p>“Safe” being that it’s running through Unreal-managed code, not because I magically made HTTP requests safe.<a href="#fnref2" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn3"><p>The user being the developer using the plugin, not the end user playing the game.<a href="#fnref3" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+</ol>
+</section></div></main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp("https:\/\/flushwhy\.github\.io\/");
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+</div> <!-- /content -->
+<footer class="footer">
+  <div class="nav-footer">
+    <div class="nav-footer-left">
+<p>flushwhy · <a href="https://flushwhy.github.io/labs">labs ↗</a></p>
+</div>   
+    <div class="nav-footer-center">
+<p>© 2026 flushwhy</p>
+</div>
+    <div class="nav-footer-right">
+<p>built with <a href="https://quarto.org">quarto</a> and love</p>
+</div>
+  </div>
+</footer>
+
+
+
+
+</body></html>
