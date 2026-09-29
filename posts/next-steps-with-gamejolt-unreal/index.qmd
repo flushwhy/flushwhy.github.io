@@ -1,6 +1,6 @@
 ---
 title: "Next Steps with GameJolt Unreal"
-date: "2025-09-26"
+date: "2026-09-26"
 description: "Some ideas for the next steps for the plugin, and some fixes and changes planned for the 1.5 update."
 categories: [blog, gamedev]
 ---
