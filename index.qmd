@@ -1,6 +1,6 @@
 ---
-title: "Flushwhy[.]{.dot}"
-subtitle: "*writing about code, games, and whatever else — no filter*"
+title: "Notes from the workbench"
+subtitle: "*Systems, games, tools, and the work in between.*"
 page-layout: full
 toc: false
 listing:
@@ -14,10 +14,10 @@ listing:
 
 ::: {.fw-hero}
 
-Systems engineer by trade. I write here about things I'm building, learning, breaking, and occasionally having opinions about. Longer, more formal lab work lives at [→ labs](https://flushwhy.github.io/labs).
+I’m a systems engineer and deep tech founder. These are working notes from projects, experiments, and ideas across native software, game technology, developer tools, and applied machine learning. More structured experiments live at [FlushLabs](https://flushwhy.github.io/labs).
 :::
 
-## recent writing
+## Recent writing
 
 ::: {#recent-posts}
 :::
