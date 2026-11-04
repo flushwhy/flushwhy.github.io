@@ -10,6 +10,7 @@ listing:
   type: default
   max-items: 5
   fields: [date, title, description, categories, reading-time]
+  feed: true
 ---
 
 ::: {.fw-hero}

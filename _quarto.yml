@@ -4,6 +4,7 @@ project:
 
 website:
   title: "flushwhy"
+  site-url: "https://flushwhy.github.io"
   description: "Notes on systems engineering, game technology, developer tools, applied machine learning, and the work behind building software."
   favicon: favicon.ico
 
