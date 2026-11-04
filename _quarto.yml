@@ -4,7 +4,7 @@ project:
 
 website:
   title: "flushwhy"
-  description: "writing about code, games, and whatever else"
+  description: "Notes on systems engineering, game technology, developer tools, applied machine learning, and the work behind building software."
   favicon: favicon.ico
 
   navbar:
@@ -26,9 +26,9 @@ website:
         aria-label: RSS
 
   page-footer:
-    left: "flushwhy · [labs ↗](https://flushwhy.github.io/labs)"
-    right: "built with [quarto](https://quarto.org) and love"
-    center: "© 2026 flushwhy"
+    left: "[FlushLabs ↗](https://flushwhy.github.io/labs)"
+    right: "Published with [Quarto](https://quarto.org)"
+    center: "© 2026 Ryan Flush"
 
 execute:
   engine: markdown
