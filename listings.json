@@ -1,7 +1,9 @@
 [
   {
-    "listing": "/posts.html",
+    "listing": "/index.html",
     "items": [
+      "/posts/ml-phys-the-first-5000/index.html",
+      "/posts/ml-physics-when-a-collision-isnt-an-impact/index.html",
       "/posts/next-steps-with-gamejolt-unreal/index.html",
       "/posts/2d-ml-aware-engine-for-games/index.html",
       "/posts/why-reading-is-important/index.html",
@@ -16,8 +18,10 @@
     ]
   },
   {
-    "listing": "/index.html",
+    "listing": "/posts.html",
     "items": [
+      "/posts/ml-phys-the-first-5000/index.html",
+      "/posts/ml-physics-when-a-collision-isnt-an-impact/index.html",
       "/posts/next-steps-with-gamejolt-unreal/index.html",
       "/posts/2d-ml-aware-engine-for-games/index.html",
       "/posts/why-reading-is-important/index.html",

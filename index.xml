@@ -10,7 +10,445 @@
 <atom:link href="https://flushwhy.github.io/index.xml" rel="self" type="application/rss+xml"/>
 <description>Notes on systems engineering, game technology, developer tools, applied machine learning, and the work behind building software.</description>
 <generator>quarto-1.11.9</generator>
-<lastBuildDate>Sat, 26 Sep 2026 00:00:00 GMT</lastBuildDate>
+<lastBuildDate>Fri, 20 Nov 2026 00:00:00 GMT</lastBuildDate>
+<item>
+  <title>ML-Phys: The First 5000</title>
+  <link>https://flushwhy.github.io/posts/ml-phys-the-first-5000/</link>
+  <description><![CDATA[ 
+
+
+
+
+<p>So this is a follow-up to my last post about the engine (<a href="https://flushwhy.github.io/posts/2d-ml-aware-engine-for-games/">ML-Physics: Teaching a Neural Net to Fake Physics</a>). I have changed a lot since then. The short version is that the physics side is in a much better place, but training has been its own little boss fight.</p>
+<p>I have been trying to get a model that can learn the boring, repeatable parts of a physics simulation without falling apart as soon as something collides or rotates. That sounds simple until you actually try to train it.</p>
+<section id="tldr" class="level2">
+<h2 class="anchored" data-anchor-id="tldr">TLDR</h2>
+<p>The biggest issues have been memory, GPU utilization, and stability.</p>
+<ul>
+<li>Chunked streaming fixed the RAM problem. I can work with a dataset that is tens of gigabytes without loading the whole thing into memory.</li>
+<li>I have been rebuilding the training objective around position, rotation, velocity, angular velocity, and energy instead of treating every output like the same problem.</li>
+<li>Collision-heavy data is now a priority. A model that only learns objects moving around without hitting each other is not a physics model I can use.</li>
+<li>Apple MPS training is now working, and I have found a few useful performance improvements. I also found a batch-size-specific NaN issue and have a workaround that passes the tests I have run so far.</li>
+</ul>
+<p>There is still a lot to do. I am not calling this production-ready.</p>
+<hr>
+</section>
+<section id="the-data-pipeline-was-the-first-wall" class="level2">
+<h2 class="anchored" data-anchor-id="the-data-pipeline-was-the-first-wall">The Data Pipeline Was the First Wall</h2>
+<p>One of the first problems was memory. The dataset got large enough that trying to load it all at once was a non-starter. I ended up building a chunked loader that reads a section of the binary data, creates the training windows, and moves on.</p>
+<p>Here is the basic idea:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1" style="background: #f1f3f5;"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><span class="kw" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">def</span> load_phdat_chunk(data_path, max_steps<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span><span class="va" style="color: #111111;
+background-color: null;
+font-style: inherit;">None</span>, step_offset<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span><span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>):</span>
+<span id="cb1-2">    header <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> load_phdat_header(data_path)</span>
+<span id="cb1-3">    steps <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> header[<span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"steps"</span>] <span class="cf" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">if</span> max_steps <span class="kw" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">is</span> <span class="va" style="color: #111111;
+background-color: null;
+font-style: inherit;">None</span> <span class="cf" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">else</span> <span class="bu" style="color: null;
+background-color: null;
+font-style: inherit;">min</span>(max_steps, header[<span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"steps"</span>])</span>
+<span id="cb1-4">    bodies <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> header[<span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"bodies"</span>]</span>
+<span id="cb1-5"></span>
+<span id="cb1-6">    bytes_per_step <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> bodies <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">*</span> SNAPSHOT_BYTES <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">*</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">2</span></span>
+<span id="cb1-7">    pre_list, post_list <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> [], []</span>
+<span id="cb1-8"></span>
+<span id="cb1-9">    <span class="cf" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">with</span> <span class="bu" style="color: null;
+background-color: null;
+font-style: inherit;">open</span>(data_path, <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"rb"</span>) <span class="im" style="color: #00769E;
+background-color: null;
+font-style: inherit;">as</span> f:</span>
+<span id="cb1-10">        mm <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> mmap.mmap(f.fileno(), <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>, access<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span>mmap.ACCESS_READ)</span>
+<span id="cb1-11"></span>
+<span id="cb1-12">        <span class="cf" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">for</span> step <span class="kw" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">in</span> <span class="bu" style="color: null;
+background-color: null;
+font-style: inherit;">range</span>(steps):</span>
+<span id="cb1-13">            base <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> HEADER_BYTES <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span> (step_offset <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span> step) <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">*</span> bytes_per_step</span>
+<span id="cb1-14">            pre <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> _parse_snapshot(mm, base, bodies)</span>
+<span id="cb1-15">            post <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> _parse_snapshot(</span>
+<span id="cb1-16">                mm, base <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span> bodies <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">*</span> SNAPSHOT_BYTES, bodies</span>
+<span id="cb1-17">            )</span>
+<span id="cb1-18"></span>
+<span id="cb1-19">            mask <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> pre[:, F_MASS_INV] <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">&gt;</span> <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1e-6</span></span>
+<span id="cb1-20">            <span class="cf" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">if</span> mask.<span class="bu" style="color: null;
+background-color: null;
+font-style: inherit;">any</span>():</span>
+<span id="cb1-21">                pre_list.append(pre[mask])</span>
+<span id="cb1-22">                post_list.append(post[mask])</span>
+<span id="cb1-23"></span>
+<span id="cb1-24">        mm.close()</span>
+<span id="cb1-25"></span>
+<span id="cb1-26">    <span class="cf" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">return</span> np.concatenate(pre_list), np.concatenate(post_list)</span></code></pre></div></div>
+<p>This solved the immediate RAM problem, but it also showed me where the next bottleneck could be. There were still Python loops doing work that could be vectorized. I suspected that was part of why the GPU was sitting around waiting for the CPU.</p>
+<p>After measuring it, though, the data loader was not the main problem in the current training setup. One run spent about 1.5% of its training time waiting for data. That is useful to know. I do not want to keep rewriting the loader if the actual bottleneck is somewhere else.</p>
+</section>
+<section id="teaching-it-to-handle-collisions" class="level2">
+<h2 class="anchored" data-anchor-id="teaching-it-to-handle-collisions">Teaching It to Handle Collisions</h2>
+<p>The early model had a pretty obvious weakness: it could look convincing until the scene got interesting.</p>
+<p>The first issue was effectively training a dead net. You can see that in the video below.</p>
+<div class="quarto-video"><video id="video_shortcode_videojs_video1" class="video-js vjs-default-skin vjs-big-play-centered vjs-fluid" controls="" preload="auto" data-setup="{}" title=""><source src="dead_net.mp4"></video></div>
+<p>I also had problems with velocity and angular velocity not being passed through the physics pipeline correctly. Once that was fixed, the model started learning, but then rotation would degrade later in training.</p>
+<div class="quarto-video"><video id="video_shortcode_videojs_video2" class="video-js vjs-default-skin vjs-big-play-centered vjs-fluid" controls="" preload="auto" data-setup="{}" title=""><source src="Rot_issues.mp4"></video></div>
+<p>That took changes on both sides. I fixed issues in the physics engine, added validation to the data loader, and started adding noise to the training data so the model would not just memorize the exact trajectories it had seen.</p>
+<div class="quarto-video"><video id="video_shortcode_videojs_video3" class="video-js vjs-default-skin vjs-big-play-centered vjs-fluid" controls="" preload="auto" data-setup="{}" title=""><source src="noise_1.mp4"></video></div>
+<div class="quarto-video"><video id="video_shortcode_videojs_video4" class="video-js vjs-default-skin vjs-big-play-centered vjs-fluid" controls="" preload="auto" data-setup="{}" title=""><source src="noise_2.mp4"></video></div>
+<p>The next step was to stop treating collisions like something the model would just magically figure out. I added collision oversampling so windows containing collision activity appear more often during training. The loss also has separate terms for position, angle, linear velocity, and angular velocity, with an energy-related term to help keep the predicted motion sensible.</p>
+<p>I have also been working with longer autoregressive rollouts. Predicting one frame is one thing. Predicting several frames in a row is where small mistakes start compounding. That is the part I actually care about for a usable engine.</p>
+<p>The current collision-focused dataset on the Mac is about 58 GB, with roughly 6.9 GB of contact metadata alongside it. The goal is not just to make the dataset bigger. It is to make sure it contains the situations the model will actually need to handle.</p>
+</section>
+<section id="getting-training-onto-the-mac" class="level2">
+<h2 class="anchored" data-anchor-id="getting-training-onto-the-mac">Getting Training onto the Mac</h2>
+<p>I have been moving the training work to my Mac because I want to free up my Windows machine for other work. The Mac uses PyTorch’s MPS backend, so this has meant checking that the training path is really running on the GPU and not quietly falling back to the CPU.</p>
+<p>The first complete five-epoch run gave me a useful baseline:</p>
+<ul>
+<li>Validation loss: 2.3192</li>
+<li>Training loss: 2.5385</li>
+<li>Throughput reached about 1,684 windows per second by the final epoch</li>
+</ul>
+<p>Those numbers are from that specific run and dataset, not a direct comparison with the newer collision experiments.</p>
+<p>I then started profiling the actual training step. One optimization combined the loss and gradient finite checks so the successful MPS path only needs one synchronization instead of doing separate checks. In the focused benchmark, that moved a representative step from around 0.44 seconds to about 0.38–0.39 seconds — roughly a 12–14% improvement.</p>
+<p>I also tested different pair-encoder chunk sizes. The model builds pairwise features between bodies, and that can create a lot of rows very quickly. A chunk size of 262,144 was a good result in the larger-batch benchmark, but it exposed an issue at batch 512.</p>
+</section>
+<section id="the-nan-problem" class="level2">
+<h2 class="anchored" data-anchor-id="the-nan-problem">The NaN Problem</h2>
+<p>This is the part I spent the most time narrowing down recently.</p>
+<p>With the custom Metal pair-feature path enabled, batch 512 would complete its first optimizer step and then produce NaN gradients on the second. The same batch ran without the custom Metal feature path, so this was not simply bad input data.</p>
+<p>I compared the custom Metal pair features against the normal PyTorch implementation. On the test data, the outputs matched exactly. The problem appeared later in the model’s pair-encoder work, and it depended on how the pair rows were chunked.</p>
+<p>Reducing the MPS pair chunk size from 262,144 to 131,072 fixed the reproduction. Batch 512 then completed 20 optimizer steps with finite gradients. Batch 1,024 also completed 20 steps with the smaller chunk size.</p>
+<p>That is a workaround, not a complete explanation of the underlying MPS behavior. I would rather be honest about that than pretend one successful benchmark means the problem is gone.</p>
+<p>I also tested a fused Metal pair encoder. It looked interesting on paper, but its backward pass produced NaN gradients at the production-sized batch. I have left that path disabled. The regular Metal pair-feature kernel is still useful; the fused encoder is not ready.</p>
+<p>Here are the current short stability results with the 131,072 pair chunk:</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th style="text-align: right;">Batch</th>
+<th style="text-align: right;">Steps</th>
+<th style="text-align: right;">Throughput</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: right;">512</td>
+<td style="text-align: right;">20</td>
+<td style="text-align: right;">~1,299 windows/s</td>
+<td>Passed</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">1,024</td>
+<td style="text-align: right;">20</td>
+<td style="text-align: right;">~1,518 windows/s</td>
+<td>Passed</td>
+</tr>
+</tbody>
+</table>
+<p>I also ran a separate 60-step check at batch 1,024 with the previous chunk size. It stayed finite throughout. These are focused stability tests, not full training runs, and the throughput numbers should not be compared across different datasets or configurations as if they were one benchmark.</p>
+</section>
+<section id="what-is-next" class="level2">
+<h2 class="anchored" data-anchor-id="what-is-next">What Is Next?</h2>
+<p>The next big thing is collision-specific evaluation. I want to know exactly what the model gets wrong: position, rotation, velocity, contact response, or long-term rollout drift. A single total loss number does not tell me enough.</p>
+<p>After that, I need a longer training run with the stable settings and a proper comparison against the classical solver. The goal is still to have the neural model handle the predictable parts of the simulation and let the classical solver take over when the model is uncertain or the situation is too complicated.</p>
+<p>I am not ready to rent an H100 for a production model yet. First I want a training pipeline that is stable, fast, and gives me results I can trust on the hardware I already have.</p>
+<p>That is where ML-Phys is at right now. A lot of the work has not been making the neural network bigger. It has been finding out why the whole system does not behave the way I expected, measuring it, and fixing one part at a time.</p>
+<p>And honestly, that is most of the engineering.</p>
+
+
+</section>
+
+ ]]></description>
+  <category>devlog</category>
+  <category>ml</category>
+  <category>gamedev</category>
+  <guid>https://flushwhy.github.io/posts/ml-phys-the-first-5000/</guid>
+  <pubDate>Fri, 20 Nov 2026 00:00:00 GMT</pubDate>
+</item>
+<item>
+  <title>ML-Physics: When a Collision Isn’t an Impact</title>
+  <link>https://flushwhy.github.io/posts/ml-physics-when-a-collision-isnt-an-impact/</link>
+  <description><![CDATA[ 
+
+
+
+
+<p>I’ve spent a lot of time trying to get ML-Physics to behave around collisions. The goal is still the same: train a neural network to predict physical interactions well enough that it can eventually take over some of the expensive work normally handled by a traditional physics solver.</p>
+<p>The problem is that collisions are where things get interesting. And by interesting, I mean that a lot of assumptions that seem reasonable at first start falling apart.</p>
+<p>I originally wanted to answer a pretty simple question: how well is the model learning collisions?</p>
+<p>But before I could answer that, I needed to be sure we were measuring collisions correctly.</p>
+<section id="a-contact-isnt-always-a-collision" class="level2">
+<h2 class="anchored" data-anchor-id="a-contact-isnt-always-a-collision">A contact isn’t always a collision</h2>
+<p>Imagine a box resting on the floor.</p>
+<p>The box and floor are touching. The physics solver is applying impulses to keep the box from falling through the floor. That contact can remain active for hundreds of simulation steps.</p>
+<p>But the box isn’t crashing into the floor hundreds of times.</p>
+<p>It’s just sitting there.</p>
+<p>This sounds obvious, but it matters when you’re looking at raw contact telemetry. If every contact record is counted as a new collision, persistent support contacts get mixed together with actual impacts. The resulting numbers can make a dataset look much more collision-heavy than it really is.</p>
+<p>I wanted the audit to distinguish three cases:</p>
+<ul>
+<li><strong>Initial overlap:</strong> Objects are already intersecting on the first recorded step of a scenario.</li>
+<li><strong>New impact:</strong> A new contact appears after the scenario begins, the bodies are approaching along the contact normal, and the solver reports a nonzero normal impulse.</li>
+<li><strong>Persistent contact:</strong> The same pair remains in contact across consecutive steps. This can include support forces, not just impacts.</li>
+</ul>
+<p>Those cases are related, but they aren’t interchangeable. If we’re trying to understand what the model learns when objects hit each other, we need to separate the impact from everything that happens after it.</p>
+</section>
+<section id="teaching-the-audit-what-to-look-for" class="level2">
+<h2 class="anchored" data-anchor-id="teaching-the-audit-what-to-look-for">Teaching the audit what to look for</h2>
+<p>I added contact classification to the collision research tooling so we can inspect those cases separately.</p>
+<p>The important part isn’t just counting contacts. The audit also looks at when a contact first appears, whether the bodies are moving toward one another, and whether a normal impulse was applied.</p>
+<p>I added regression coverage for the distinction between a fresh impact and a contact that simply persists. That gives us a guardrail against accidentally treating a box resting on a floor as a new collision every frame.</p>
+<p>This is instrumentation, not a change to the physics solver. The point is to improve what we can say about the data before we start changing the model based on it.</p>
+</section>
+<section id="the-first-1000-scenarios" class="level2">
+<h2 class="anchored" data-anchor-id="the-first-1000-scenarios">The first 1,000 scenarios</h2>
+<p>For an initial pass, I audited the first 300,000 simulation steps of the new collision dataset.</p>
+<p>The complete dataset contains 30 million steps across 100,000 scenarios, so this sample covers the first 1,000 scenarios — roughly 1% of the dataset. It is a useful first look, but it is not a random sample across all scenarios, and it should not be treated as a final dataset-wide result.</p>
+<p>Here is what that first pass reported:</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Measurement</th>
+<th style="text-align: right;">First 1,000 scenarios</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Contact records</td>
+<td style="text-align: right;">1,219,739</td>
+</tr>
+<tr class="even">
+<td>Persistent contact rows</td>
+<td style="text-align: right;">1,166,507</td>
+</tr>
+<tr class="odd">
+<td>Persistent rows with nonzero impulse</td>
+<td style="text-align: right;">1,014,973</td>
+</tr>
+<tr class="even">
+<td>Initial-step contact rows</td>
+<td style="text-align: right;">1,256</td>
+</tr>
+<tr class="odd">
+<td>Initial-step rows with impulse</td>
+<td style="text-align: right;">420</td>
+</tr>
+<tr class="even">
+<td>New impacts after scenario start</td>
+<td style="text-align: right;">49,475</td>
+</tr>
+<tr class="odd">
+<td>Dynamic-to-dynamic new impacts</td>
+<td style="text-align: right;">11,313</td>
+</tr>
+<tr class="even">
+<td>Dynamic-to-static new impacts</td>
+<td style="text-align: right;">38,162</td>
+</tr>
+</tbody>
+</table>
+<p>The first thing that jumps out is how much of the contact data is persistent contact. That isn’t automatically a problem. Objects resting against floors, walls, and other objects are normal parts of a physics simulation.</p>
+<p>It does mean that raw contact counts aren’t a good substitute for impact counts, though. We need to be careful about which question a metric is actually answering.</p>
+</section>
+<section id="some-scenarios-start-with-objects-already-overlapping" class="level2">
+<h2 class="anchored" data-anchor-id="some-scenarios-start-with-objects-already-overlapping">Some scenarios start with objects already overlapping</h2>
+<p>There was another result I didn’t expect to see so often.</p>
+<p>Of the first 1,000 scenarios, 678 had at least one contact on their first recorded simulation step.</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Scenario family</th>
+<th style="text-align: right;">Scenarios with initial contact</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Circle stack</td>
+<td style="text-align: right;">219 / 334</td>
+</tr>
+<tr class="even">
+<td>Box pile</td>
+<td style="text-align: right;">206 / 333</td>
+</tr>
+<tr class="odd">
+<td>Mixed</td>
+<td style="text-align: right;">253 / 333</td>
+</tr>
+</tbody>
+</table>
+<p>The maximum initial penetration depth also varied by scenario family:</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Scenario family</th>
+<th style="text-align: right;">Maximum initial penetration</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Circle stack</td>
+<td style="text-align: right;">0.923</td>
+</tr>
+<tr class="even">
+<td>Box pile</td>
+<td style="text-align: right;">1.318</td>
+</tr>
+<tr class="odd">
+<td>Mixed</td>
+<td style="text-align: right;">1.600</td>
+</tr>
+</tbody>
+</table>
+<p>These are initial-condition overlaps, not naturally occurring impacts during the simulation.</p>
+<p>That distinction matters. If two objects are already intersecting when a scenario starts, the solver has to resolve that overlap before we can study an ordinary impact between them. Those cases may be useful as stress tests, but they aren’t necessarily representative of the collision behavior we ultimately want the network to reproduce.</p>
+<p>I don’t think this makes the dataset useless. It means we need to understand what the generator is producing and decide whether those initial overlaps are intentional.</p>
+</section>
+<section id="checking-whether-the-measurements-make-sense" class="level2">
+<h2 class="anchored" data-anchor-id="checking-whether-the-measurements-make-sense">Checking whether the measurements make sense</h2>
+<p>Before trusting the audit, I wanted a couple of sanity checks against known physics behavior.</p>
+<p>For isolated dynamic-to-dynamic impacts, I compared the measured restitution behavior with the expected result. Across 287 isolated events, the mean absolute error was approximately:</p>
+<p><code>4.05 × 10⁻⁶</code></p>
+<p>That’s encouraging. It suggests the restitution measurement path is behaving correctly for these isolated contacts.</p>
+<p>It does <strong>not</strong> prove that the entire collision solver is correct. An isolated two-body impact is much simpler than a pile-up, simultaneous contacts, or a body interacting with several surfaces at once.</p>
+<p>I also checked the friction impulse constraint. The largest measured excess over the expected bound was approximately <code>9.3 × 10⁻⁷</code>, which is within the numerical tolerance used for this check.</p>
+<p>These are useful sanity checks, not a certificate that every collision case is correct.</p>
+</section>
+<section id="a-question-about-friction-on-static-surfaces" class="level2">
+<h2 class="anchored" data-anchor-id="a-question-about-friction-on-static-surfaces">A question about friction on static surfaces</h2>
+<p>While looking through the material setup, I found something that needs a closer look.</p>
+<p>The generated static floors and walls are created without explicitly assigning friction. Our contact material mixing uses a geometric-mean rule. Under that rule, if one surface has zero friction, the resulting friction for the pair is also zero.</p>
+<p>So dynamic objects may effectively have no friction against the static environment in these generated scenarios.</p>
+<p>I haven’t established whether that is intentional. It could be a deliberate simplification, or it could be an overlooked default. Either way, it can change the behavior of the dataset significantly.</p>
+<p>Think about a box sliding across a floor. A frictionless floor produces a very different trajectory from a surface that slows the box down. That changes more than just the final resting position: it can affect later impact speeds, angles, and the distribution of examples the model sees.</p>
+<p>Before treating this dataset as representative of ordinary physical interactions, we need to decide what those material defaults should be and verify what the generator actually writes.</p>
+</section>
+<section id="what-i-want-to-test-next" class="level2">
+<h2 class="anchored" data-anchor-id="what-i-want-to-test-next">What I want to test next</h2>
+<p>I don’t want to jump straight into another huge training run. I’d rather build small, controlled scenarios where we know what should happen and can change one variable at a time.</p>
+<p>The experiments I want to work through are:</p>
+<ol type="1">
+<li><strong>Restitution:</strong> Sweep restitution values and compare measured post-impact velocities with expected outcomes.</li>
+<li><strong>Mass ratios:</strong> Test light objects hitting much heavier objects, and the reverse.</li>
+<li><strong>Impact angles:</strong> Compare direct impacts with glancing blows.</li>
+<li><strong>Friction:</strong> Separate sliding, sticking, and rolling behavior.</li>
+<li><strong>Off-center impacts:</strong> Check how impact position and rotational inertia affect the result.</li>
+<li><strong>Static surfaces:</strong> Verify the intended friction values for floors and walls.</li>
+<li><strong>Simultaneous contacts:</strong> Test piles and multi-body impacts where several contacts happen together.</li>
+</ol>
+<p>That last category is especially interesting. A ball hitting another ball is relatively easy to reason about. Several objects pushing against one another at nearly the same time are a much harder problem.</p>
+<p>Once those controlled cases are behaving as expected, we can generate a cleaner dataset with known material properties and scenario conditions. Then we can compare model performance on collision-heavy cases against non-collision cases and see where prediction quality actually breaks down.</p>
+</section>
+<section id="why-im-doing-this-before-adding-more-compute" class="level2">
+<h2 class="anchored" data-anchor-id="why-im-doing-this-before-adding-more-compute">Why I’m doing this before adding more compute</h2>
+<p>The long-term goal hasn’t changed. I still want ML-Physics to become a useful learned physics system, not just a model that looks convincing for a few frames.</p>
+<p>But more training time doesn’t automatically fix bad labels, ambiguous contacts, or unrealistic starting conditions. If the examples are teaching the wrong behavior, a faster GPU just helps us learn the wrong behavior faster.</p>
+<p>I’m also trying to get stable training on my Mac while keeping my Windows machine available for other work. Eventually I’d like to rent an H100 for a serious production training run, but I want to know that the data and evaluation are ready before paying for that.</p>
+</section>
+<section id="where-things-stand" class="level2">
+<h2 class="anchored" data-anchor-id="where-things-stand">Where things stand</h2>
+<p>This first pass has given us a better way to talk about collision data:</p>
+<ul>
+<li>The audit separates new impacts from persistent contacts.</li>
+<li>Many scenarios in the initial sample begin with overlapping objects.</li>
+<li>The isolated restitution check looks promising.</li>
+<li>The friction impulse constraint is respected within the measured tolerance.</li>
+<li>Static-surface friction defaults need to be verified.</li>
+<li>The first 1,000 scenarios are not enough to make claims about the full dataset.</li>
+</ul>
+<p>The full 30-million-step audit is still running, so these numbers are preliminary. I’ll update this investigation once the complete results are available.</p>
+<p>For now, the biggest lesson is a pretty simple one:</p>
+<p><strong>Before teaching a neural network how to understand physics, we need to make sure we understand the physics we’re feeding it.</strong></p>
+<p>And apparently, figuring out what counts as a collision is a pretty good place to start.</p>
+
+
+</section>
+
+ ]]></description>
+  <category>devlog</category>
+  <category>ml</category>
+  <category>gamedev</category>
+  <guid>https://flushwhy.github.io/posts/ml-physics-when-a-collision-isnt-an-impact/</guid>
+  <pubDate>Fri, 20 Nov 2026 00:00:00 GMT</pubDate>
+</item>
 <item>
   <title>Next Steps with GameJolt Unreal</title>
   <link>https://flushwhy.github.io/posts/next-steps-with-gamejolt-unreal/</link>
