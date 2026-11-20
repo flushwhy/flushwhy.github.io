@@ -1,0 +1,171 @@
+---
+title: "ML-Physics: When a Collision Isn't an Impact"
+date: "2026-11-20"
+description: "Investigating collision data in ML-Physics, separating real impacts from persistent contacts, and finding questions hiding in the dataset."
+categories: [devlog, ml, gamedev]
+format:
+  html:
+    code-fold: true
+---
+
+I've spent a lot of time trying to get ML-Physics to behave around collisions. The goal is still the same: train a neural network to predict physical interactions well enough that it can eventually take over some of the expensive work normally handled by a traditional physics solver.
+
+The problem is that collisions are where things get interesting. And by interesting, I mean that a lot of assumptions that seem reasonable at first start falling apart.
+
+I originally wanted to answer a pretty simple question: how well is the model learning collisions?
+
+But before I could answer that, I needed to be sure we were measuring collisions correctly.
+
+## A contact isn't always a collision
+
+Imagine a box resting on the floor.
+
+The box and floor are touching. The physics solver is applying impulses to keep the box from falling through the floor. That contact can remain active for hundreds of simulation steps.
+
+But the box isn't crashing into the floor hundreds of times.
+
+It's just sitting there.
+
+This sounds obvious, but it matters when you're looking at raw contact telemetry. If every contact record is counted as a new collision, persistent support contacts get mixed together with actual impacts. The resulting numbers can make a dataset look much more collision-heavy than it really is.
+
+I wanted the audit to distinguish three cases:
+
+- **Initial overlap:** Objects are already intersecting on the first recorded step of a scenario.
+- **New impact:** A new contact appears after the scenario begins, the bodies are approaching along the contact normal, and the solver reports a nonzero normal impulse.
+- **Persistent contact:** The same pair remains in contact across consecutive steps. This can include support forces, not just impacts.
+
+Those cases are related, but they aren't interchangeable. If we're trying to understand what the model learns when objects hit each other, we need to separate the impact from everything that happens after it.
+
+## Teaching the audit what to look for
+
+I added contact classification to the collision research tooling so we can inspect those cases separately.
+
+The important part isn't just counting contacts. The audit also looks at when a contact first appears, whether the bodies are moving toward one another, and whether a normal impulse was applied.
+
+I added regression coverage for the distinction between a fresh impact and a contact that simply persists. That gives us a guardrail against accidentally treating a box resting on a floor as a new collision every frame.
+
+This is instrumentation, not a change to the physics solver. The point is to improve what we can say about the data before we start changing the model based on it.
+
+## The first 1,000 scenarios
+
+For an initial pass, I audited the first 300,000 simulation steps of the new collision dataset.
+
+The complete dataset contains 30 million steps across 100,000 scenarios, so this sample covers the first 1,000 scenarios — roughly 1% of the dataset. It is a useful first look, but it is not a random sample across all scenarios, and it should not be treated as a final dataset-wide result.
+
+Here is what that first pass reported:
+
+| Measurement | First 1,000 scenarios |
+|---|---:|
+| Contact records | 1,219,739 |
+| Persistent contact rows | 1,166,507 |
+| Persistent rows with nonzero impulse | 1,014,973 |
+| Initial-step contact rows | 1,256 |
+| Initial-step rows with impulse | 420 |
+| New impacts after scenario start | 49,475 |
+| Dynamic-to-dynamic new impacts | 11,313 |
+| Dynamic-to-static new impacts | 38,162 |
+
+The first thing that jumps out is how much of the contact data is persistent contact. That isn't automatically a problem. Objects resting against floors, walls, and other objects are normal parts of a physics simulation.
+
+It does mean that raw contact counts aren't a good substitute for impact counts, though. We need to be careful about which question a metric is actually answering.
+
+## Some scenarios start with objects already overlapping
+
+There was another result I didn't expect to see so often.
+
+Of the first 1,000 scenarios, 678 had at least one contact on their first recorded simulation step.
+
+| Scenario family | Scenarios with initial contact |
+|---|---:|
+| Circle stack | 219 / 334 |
+| Box pile | 206 / 333 |
+| Mixed | 253 / 333 |
+
+The maximum initial penetration depth also varied by scenario family:
+
+| Scenario family | Maximum initial penetration |
+|---|---:|
+| Circle stack | 0.923 |
+| Box pile | 1.318 |
+| Mixed | 1.600 |
+
+These are initial-condition overlaps, not naturally occurring impacts during the simulation.
+
+That distinction matters. If two objects are already intersecting when a scenario starts, the solver has to resolve that overlap before we can study an ordinary impact between them. Those cases may be useful as stress tests, but they aren't necessarily representative of the collision behavior we ultimately want the network to reproduce.
+
+I don't think this makes the dataset useless. It means we need to understand what the generator is producing and decide whether those initial overlaps are intentional.
+
+## Checking whether the measurements make sense
+
+Before trusting the audit, I wanted a couple of sanity checks against known physics behavior.
+
+For isolated dynamic-to-dynamic impacts, I compared the measured restitution behavior with the expected result. Across 287 isolated events, the mean absolute error was approximately:
+
+`4.05 × 10⁻⁶`
+
+That's encouraging. It suggests the restitution measurement path is behaving correctly for these isolated contacts.
+
+It does **not** prove that the entire collision solver is correct. An isolated two-body impact is much simpler than a pile-up, simultaneous contacts, or a body interacting with several surfaces at once.
+
+I also checked the friction impulse constraint. The largest measured excess over the expected bound was approximately `9.3 × 10⁻⁷`, which is within the numerical tolerance used for this check.
+
+These are useful sanity checks, not a certificate that every collision case is correct.
+
+## A question about friction on static surfaces
+
+While looking through the material setup, I found something that needs a closer look.
+
+The generated static floors and walls are created without explicitly assigning friction. Our contact material mixing uses a geometric-mean rule. Under that rule, if one surface has zero friction, the resulting friction for the pair is also zero.
+
+So dynamic objects may effectively have no friction against the static environment in these generated scenarios.
+
+I haven't established whether that is intentional. It could be a deliberate simplification, or it could be an overlooked default. Either way, it can change the behavior of the dataset significantly.
+
+Think about a box sliding across a floor. A frictionless floor produces a very different trajectory from a surface that slows the box down. That changes more than just the final resting position: it can affect later impact speeds, angles, and the distribution of examples the model sees.
+
+Before treating this dataset as representative of ordinary physical interactions, we need to decide what those material defaults should be and verify what the generator actually writes.
+
+## What I want to test next
+
+I don't want to jump straight into another huge training run. I'd rather build small, controlled scenarios where we know what should happen and can change one variable at a time.
+
+The experiments I want to work through are:
+
+1. **Restitution:** Sweep restitution values and compare measured post-impact velocities with expected outcomes.
+2. **Mass ratios:** Test light objects hitting much heavier objects, and the reverse.
+3. **Impact angles:** Compare direct impacts with glancing blows.
+4. **Friction:** Separate sliding, sticking, and rolling behavior.
+5. **Off-center impacts:** Check how impact position and rotational inertia affect the result.
+6. **Static surfaces:** Verify the intended friction values for floors and walls.
+7. **Simultaneous contacts:** Test piles and multi-body impacts where several contacts happen together.
+
+That last category is especially interesting. A ball hitting another ball is relatively easy to reason about. Several objects pushing against one another at nearly the same time are a much harder problem.
+
+Once those controlled cases are behaving as expected, we can generate a cleaner dataset with known material properties and scenario conditions. Then we can compare model performance on collision-heavy cases against non-collision cases and see where prediction quality actually breaks down.
+
+## Why I'm doing this before adding more compute
+
+The long-term goal hasn't changed. I still want ML-Physics to become a useful learned physics system, not just a model that looks convincing for a few frames.
+
+But more training time doesn't automatically fix bad labels, ambiguous contacts, or unrealistic starting conditions. If the examples are teaching the wrong behavior, a faster GPU just helps us learn the wrong behavior faster.
+
+I'm also trying to get stable training on my Mac while keeping my Windows machine available for other work. Eventually I'd like to rent an H100 for a serious production training run, but I want to know that the data and evaluation are ready before paying for that.
+
+## Where things stand
+
+This first pass has given us a better way to talk about collision data:
+
+- The audit separates new impacts from persistent contacts.
+- Many scenarios in the initial sample begin with overlapping objects.
+- The isolated restitution check looks promising.
+- The friction impulse constraint is respected within the measured tolerance.
+- Static-surface friction defaults need to be verified.
+- The first 1,000 scenarios are not enough to make claims about the full dataset.
+
+The full 30-million-step audit is still running, so these numbers are preliminary. I'll update this investigation once the complete results are available.
+
+For now, the biggest lesson is a pretty simple one:
+
+**Before teaching a neural network how to understand physics, we need to make sure we understand the physics we're feeding it.**
+
+And apparently, figuring out what counts as a collision is a pretty good place to start.

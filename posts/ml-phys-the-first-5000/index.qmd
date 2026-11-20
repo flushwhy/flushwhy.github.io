@@ -1,0 +1,140 @@
+---
+title: "ML-Phys: The First 5000"
+date: "2026-11-20"
+description: "A progress report on collision data, training stability, and getting ML-Phys running properly on Apple Silicon."
+categories: [devlog, ml, gamedev]
+format:
+  html:
+    code-fold: true
+---
+
+So this is a follow-up to my last post about the engine ([ML-Physics: Teaching a Neural Net to Fake Physics](https://flushwhy.github.io/posts/2d-ml-aware-engine-for-games/)). I have changed a lot since then. The short version is that the physics side is in a much better place, but training has been its own little boss fight.
+
+I have been trying to get a model that can learn the boring, repeatable parts of a physics simulation without falling apart as soon as something collides or rotates. That sounds simple until you actually try to train it.
+
+## TLDR
+
+The biggest issues have been memory, GPU utilization, and stability.
+
+- Chunked streaming fixed the RAM problem. I can work with a dataset that is tens of gigabytes without loading the whole thing into memory.
+- I have been rebuilding the training objective around position, rotation, velocity, angular velocity, and energy instead of treating every output like the same problem.
+- Collision-heavy data is now a priority. A model that only learns objects moving around without hitting each other is not a physics model I can use.
+- Apple MPS training is now working, and I have found a few useful performance improvements. I also found a batch-size-specific NaN issue and have a workaround that passes the tests I have run so far.
+
+There is still a lot to do. I am not calling this production-ready.
+
+---
+
+## The Data Pipeline Was the First Wall
+
+One of the first problems was memory. The dataset got large enough that trying to load it all at once was a non-starter. I ended up building a chunked loader that reads a section of the binary data, creates the training windows, and moves on.
+
+Here is the basic idea:
+
+```python
+def load_phdat_chunk(data_path, max_steps=None, step_offset=0):
+    header = load_phdat_header(data_path)
+    steps = header["steps"] if max_steps is None else min(max_steps, header["steps"])
+    bodies = header["bodies"]
+
+    bytes_per_step = bodies * SNAPSHOT_BYTES * 2
+    pre_list, post_list = [], []
+
+    with open(data_path, "rb") as f:
+        mm = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)
+
+        for step in range(steps):
+            base = HEADER_BYTES + (step_offset + step) * bytes_per_step
+            pre = _parse_snapshot(mm, base, bodies)
+            post = _parse_snapshot(
+                mm, base + bodies * SNAPSHOT_BYTES, bodies
+            )
+
+            mask = pre[:, F_MASS_INV] > 1e-6
+            if mask.any():
+                pre_list.append(pre[mask])
+                post_list.append(post[mask])
+
+        mm.close()
+
+    return np.concatenate(pre_list), np.concatenate(post_list)
+```
+
+This solved the immediate RAM problem, but it also showed me where the next bottleneck could be. There were still Python loops doing work that could be vectorized. I suspected that was part of why the GPU was sitting around waiting for the CPU.
+
+After measuring it, though, the data loader was not the main problem in the current training setup. One run spent about 1.5% of its training time waiting for data. That is useful to know. I do not want to keep rewriting the loader if the actual bottleneck is somewhere else.
+
+## Teaching It to Handle Collisions
+
+The early model had a pretty obvious weakness: it could look convincing until the scene got interesting.
+
+The first issue was effectively training a dead net. You can see that in the video below.
+
+{{<video dead_net.mp4>}}
+
+I also had problems with velocity and angular velocity not being passed through the physics pipeline correctly. Once that was fixed, the model started learning, but then rotation would degrade later in training.
+
+{{<video Rot_issues.mp4>}}
+
+That took changes on both sides. I fixed issues in the physics engine, added validation to the data loader, and started adding noise to the training data so the model would not just memorize the exact trajectories it had seen.
+
+{{<video noise_1.mp4>}}
+
+{{<video noise_2.mp4>}}
+
+The next step was to stop treating collisions like something the model would just magically figure out. I added collision oversampling so windows containing collision activity appear more often during training. The loss also has separate terms for position, angle, linear velocity, and angular velocity, with an energy-related term to help keep the predicted motion sensible.
+
+I have also been working with longer autoregressive rollouts. Predicting one frame is one thing. Predicting several frames in a row is where small mistakes start compounding. That is the part I actually care about for a usable engine.
+
+The current collision-focused dataset on the Mac is about 58 GB, with roughly 6.9 GB of contact metadata alongside it. The goal is not just to make the dataset bigger. It is to make sure it contains the situations the model will actually need to handle.
+
+## Getting Training onto the Mac
+
+I have been moving the training work to my Mac because I want to free up my Windows machine for other work. The Mac uses PyTorch's MPS backend, so this has meant checking that the training path is really running on the GPU and not quietly falling back to the CPU.
+
+The first complete five-epoch run gave me a useful baseline:
+
+- Validation loss: 2.3192
+- Training loss: 2.5385
+- Throughput reached about 1,684 windows per second by the final epoch
+
+Those numbers are from that specific run and dataset, not a direct comparison with the newer collision experiments.
+
+I then started profiling the actual training step. One optimization combined the loss and gradient finite checks so the successful MPS path only needs one synchronization instead of doing separate checks. In the focused benchmark, that moved a representative step from around 0.44 seconds to about 0.38–0.39 seconds — roughly a 12–14% improvement.
+
+I also tested different pair-encoder chunk sizes. The model builds pairwise features between bodies, and that can create a lot of rows very quickly. A chunk size of 262,144 was a good result in the larger-batch benchmark, but it exposed an issue at batch 512.
+
+## The NaN Problem
+
+This is the part I spent the most time narrowing down recently.
+
+With the custom Metal pair-feature path enabled, batch 512 would complete its first optimizer step and then produce NaN gradients on the second. The same batch ran without the custom Metal feature path, so this was not simply bad input data.
+
+I compared the custom Metal pair features against the normal PyTorch implementation. On the test data, the outputs matched exactly. The problem appeared later in the model's pair-encoder work, and it depended on how the pair rows were chunked.
+
+Reducing the MPS pair chunk size from 262,144 to 131,072 fixed the reproduction. Batch 512 then completed 20 optimizer steps with finite gradients. Batch 1,024 also completed 20 steps with the smaller chunk size.
+
+That is a workaround, not a complete explanation of the underlying MPS behavior. I would rather be honest about that than pretend one successful benchmark means the problem is gone.
+
+I also tested a fused Metal pair encoder. It looked interesting on paper, but its backward pass produced NaN gradients at the production-sized batch. I have left that path disabled. The regular Metal pair-feature kernel is still useful; the fused encoder is not ready.
+
+Here are the current short stability results with the 131,072 pair chunk:
+
+| Batch | Steps | Throughput | Result |
+|---:|---:|---:|---|
+| 512 | 20 | ~1,299 windows/s | Passed |
+| 1,024 | 20 | ~1,518 windows/s | Passed |
+
+I also ran a separate 60-step check at batch 1,024 with the previous chunk size. It stayed finite throughout. These are focused stability tests, not full training runs, and the throughput numbers should not be compared across different datasets or configurations as if they were one benchmark.
+
+## What Is Next?
+
+The next big thing is collision-specific evaluation. I want to know exactly what the model gets wrong: position, rotation, velocity, contact response, or long-term rollout drift. A single total loss number does not tell me enough.
+
+After that, I need a longer training run with the stable settings and a proper comparison against the classical solver. The goal is still to have the neural model handle the predictable parts of the simulation and let the classical solver take over when the model is uncertain or the situation is too complicated.
+
+I am not ready to rent an H100 for a production model yet. First I want a training pipeline that is stable, fast, and gives me results I can trust on the hardware I already have.
+
+That is where ML-Phys is at right now. A lot of the work has not been making the neural network bigger. It has been finding out why the whole system does not behave the way I expected, measuring it, and fixing one part at a time.
+
+And honestly, that is most of the engineering.
